@@ -1,82 +1,40 @@
 'use strict';
-
-const buyer = [
-  ['Что важнее в новом доме?', ['Тишина и зелень','Всё нужное рядом','Простор для семьи'], [0,1,2], ['♧','⌂','◇']],
-  ['Как вы проводите выходные?', ['Гуляю и читаю','Встречаюсь с друзьями','Устраиваю семейные обеды'], [0,1,2], ['☼','✳','◈']],
-  ['Как часто вы пользуетесь машиной?', ['Редко, люблю ходить пешком','По необходимости','Почти каждый день'], [0,1,2], ['↝','↔','≋']],
-  ['Чего ждёте от двора?', ['Тихой зоны отдыха','Места для спорта','Детской площадки'], [0,1,2], ['♧','↗','☆']],
-  ['Какая планировка удобнее?', ['Отдельная спальня','Кухня-гостиная для встреч','Несколько отдельных комнат'], [0,1,2], ['▤','◫','⊞']],
-  ['Как обычно начинается ваше утро?', ['Кофе и тишина','Забегаю в кофейню по пути','Собираемся всей семьёй'], [0,1,2], ['☕','▰','☼']]
-];
-
-const agent = [
-  ['Где размещают автомобили жителей?', ['Во дворе','В подземном паркинге','На детской площадке'], 1, 'Подземный паркинг помогает освободить двор для пешеходов.'],
-  ['Что доступно на первых этажах?', ['Коммерческие помещения','Только кладовые','Спортивные трибуны'], 0, 'Коммерческие помещения дают место для повседневных сервисов.'],
-  ['Что показать семье с ребёнком?', ['Только фасад','Только парковку','Двор и детскую площадку'], 2, 'Покажите реальный маршрут из лобби к площадке через двор без машин.'],
-  ['Как помочь сравнить планировки?', ['Обсудить привычки и показать несколько схем','Советовать самую дорогую','Сравнить только площадь'], 0, 'Спросите про сценарии жизни, количество отдельных комнат и общую зону.'],
-  ['Что пояснить на входе в дом?', ['Что двор открыт автомобилям','Как устроен вход и путь во двор','Что входная группа заменяет двор'], 1, 'Современное лобби удобно показать через повседневный маршрут.'],
-  ['Как показать озеленение?', ['Пообещать тишину в любой квартире','Рассказать только о фасаде','Пройти по дорожкам до зоны отдыха'], 2, 'Маршрут помогает связать озеленение с прогулками и отдыхом.']
-];
-
-const profiles = [
-  ['Тихая квартира с отдельной спальней','Начните с вариантов, окна которых выходят в озеленённый двор. Отдельная спальня позволит уединиться, а зона отдыха будет рядом.'],
-  ['Евродвушка с кухней-гостиной','Открытая общая зона удобна для встреч. Спортивная площадка и сервисы на первом этаже помогут встроить квартал в ваш ритм.'],
-  ['Семейная квартира с тремя комнатами','Отдельные комнаты дают семье больше личного пространства. На просмотре сравните дорогу от лобби до детской площадки и входа в паркинг.']
-];
-
-let mode, step, answers, picked;
-const {root, action, progress, reward} = Game;
-const art = '<div class="quiz-art"><img src="../assets/images/quiz-terrace.webp" alt="Терраса жилого комплекса «Горизонт» на закате" width="1200" height="960"></div>';
-
-function restart(nextMode) {
-  mode = nextMode;
-  step = -1;
-  picked = null;
-  answers = [];
-  render();
-}
-
-function render() {
-  const training = mode === 'agent';
-  const questions = training ? agent : buyer;
-  const earned = training ? answers.filter((choice, i) => choice === agent[i][2]).length * 20 : answers.length * 20;
-
-  if (step === questions.length) {
-    const totals = [0,0,0];
-    answers.forEach((choice, i) => { if (!training) totals[buyer[i][2][choice]] += i === 4 ? 2 : 1; });
-    const profile = profiles[totals.indexOf(Math.max(...totals))];
-    root.innerHTML = reward({
-      title: training ? 'Квиз завершён' : profile[0], score: earned + 50,
-      badge: training && earned < 80 ? 'Квиз пройден' : 'Знаток Горизонта',
-      detail: training ? `Верных ответов: ${earned / 20} из ${agent.length}. ${earned >= 80 ? 'Вы готовы вести экскурсию по кварталу.' : 'На повторе обратите внимание на пояснения к ответам.'}` : profile[1],
-      cta: training ? '' : 'Получить подборку квартир'
-    });
-    return;
+(() => {
+  const questions=[
+    {title:'Что важнее в новом доме?',choices:[['Тишина и зелень','plant','Вырастите цветок: три действия с анимациями','♧'],['Всё нужное рядом','services','Соберите семь сервисов вокруг дома','▦'],['Простор для семьи','furniture','Обставьте объёмную квартиру','⌂']]},
+    {title:'Каким будет ваше утро?',choices:[['Быстрый путь к парку','route','Сравните три маршрута и найдите короткий','⌁'],['Знакомство с соседями','memory','Найдите шесть пар карточек','◈'],['Яркое настроение','colors','Смешайте краски по рецепту','✿']]},
+    {title:'Как позаботимся о дворе?',choices:[['Уберём полянку','clean','Очистите сад, сохранив цветы','♧'],['Настроим умный вход','math','Решите три разных примера','＋'],['Восстановим картину','puzzle','Соберите цветную иллюстрацию','▧']]},
+    {title:'Какой проект выберете?',choices:[['Игровой клуб','blocks','Три раунда с разными полями и фигурами','▤'],['Полив сада','pipes','Поверните трубы по схеме','⌁'],['Место для отдыха','balance','Уравновесьте соседские качели','⚖']]},
+    {title:'Что наполнит двор жизнью?',choices:[['Музыка','rhythm','Поймайте пять нот в нужный момент','♫'],['Энергия ветра','wind','Разверните три ветряка','✣'],['Новые маршруты','bridge','Подберите балки для трёх пролётов','⊞']]},
+    {title:'Чем займётесь вечером?',choices:[['Встреча с друзьями','clock','Настройте часы для двух встреч','◷'],['Огни двора','circuit','Разберитесь с цепью фонарей','☼'],['Звёздное небо','constellation','Соедините семь звёзд созвездия','✦']]},
+    {title:'Что делает дом уютным?',choices:[['Красивые детали','silhouette','Поверните фигурку по её тени','◩'],['Всё для ужина','shopping','Соберите покупки в рамках бюджета','▣'],['Порядок в кладовой','stack','Поставьте четыре ящика ровной башней','▤']]},
+    {title:'Чему посвятите выходной?',choices:[['Заботе о природе','aquarium','Проведите рыбку мимо кораллов','≈'],['Помощи соседям','delivery','Разнесите три посылки по адресам','⌂'],['Маленькому открытию','safe','Откройте трёхзначный замок','◉']]},
+    {title:'Последний штрих к вашему кварталу?',choices:[['Внимание к деталям','differences','Найдите пять отличий на картинках','◈'],['Больше солнца','solar','Направьте свет на три клумбы','☀'],['Общий план','order','Составьте правильный порядок действий','☷']]}
+  ];
+  const key='horizon-living-v3';let state;
+  function fresh(){return {day:Loyalty.day(),results:[]};}
+  function load(){try{const s=JSON.parse(localStorage.getItem(key));state=s?.day===Loyalty.day()&&Array.isArray(s.results)&&s.results.length<=9?s:fresh();}catch{state=fresh();}}
+  function save(){try{localStorage.setItem(key,JSON.stringify(state));}catch{}}
+  function amount(step){return [20,40,80][Math.floor(step/3)];}
+  function total(){return state.results.reduce((sum,r,i)=>sum+(r.done?amount(i):0),0);}
+  function scene(){return GameArt.scene();}
+  function instructions(){Game.modal('Ваш дом начинается с действий',`<p>Три уровня, по три вопроса в каждом. Все 27 вариантов запускают разные механики: в одном прохождении вы выбираете девять разных заданий. Выберите близкий вам сценарий и выполните маленькое задание: вырастите цветок, соберите район, расставьте мебель или решите головоломку.</p><div class="level-prizes"><span>Уровень 1 <b>20 Б / задание</b></span><span>Уровень 2 <b>40 Б / задание</b></span><span>Уровень 3 <b>80 Б / задание</b></span></div><p>Баллы начисляются только после выполнения мини-игры. Можно пропустить вопрос или само задание — тогда получите 0 Б. За прохождение можно заработать до 420 Б. Начисление за один вопрос доступно один раз в день, повтор — для удовольствия.</p><p>Мебель и здания размещайте нажатием: выберите предмет, затем клетку. Если не помещается — поверните или уберите уже поставленное. Прогресс сохраняется автоматически.</p><button class="btn" data-close>Начать своё приключение</button>`);}
+  function render(){
+    const step=state.results.length,finished=step===9,level=Math.min(2,Math.floor(step/3)),q=questions[Math.min(step,8)];
+    document.body.classList.add('living-game','immersive-game');
+    Game.root.innerHTML=`<div class="living-screen">${scene()}<div class="living-shade"></div><header class="living-hud"><div><p class="eyebrow">КВАРТИРА ПОД ВАШ РИТМ</p><h1>Почувствуйте себя дома</h1></div><div class="living-score"><b>${total()} Б</b><span>за это прохождение</span></div></header><nav class="living-levels" aria-label="Уровни игры">${['Первое знакомство','Соседская жизнь','Мой идеальный дом'].map((name,i)=>`<div class="living-level ${i===level?'current':''} ${step>=(i+1)*3?'completed':''}"><span>${step>=(i+1)*3?'✓':i+1}</span><div><b>${name}</b><small>${[20,40,80][i]} Б за задание</small></div><div class="level-dots">${[0,1,2].map(j=>`<i class="${state.results[i*3+j]?.done?'done':state.results[i*3+j]?'skipped':''}"></i>`).join('')}</div></div>`).join('')}</nav><section class="living-question ${finished?'living-finish':''}">${finished?finishMarkup():`<div class="question-heading"><div><p class="eyebrow">УРОВЕНЬ ${level+1} · ВОПРОС ${step%3+1} ИЗ 3</p><h2>${q.title}</h2></div><span class="question-reward">+${amount(step)} Б</span></div><p class="question-note">Выберите сценарий. Выполните задание, чтобы засчитать ответ и получить баллы.</p><div class="living-choices">${q.choices.map(([label,type,desc,icon],i)=>`<button class="living-choice" data-choice="${i}"><span class="choice-icon">${icon}</span><span class="choice-copy"><b>${label}</b><small>${desc}</small></span><span class="choice-action">Играть</span></button>`).join('')}</div><div class="question-bottom"><span>Вопрос ${step+1} / 9</span><button class="living-skip" id="skip-question">Пропустить без баллов</button></div>`}</section><div class="window-label">Вид из вашего будущего окна <i></i> Сказочный двор Горизонта</div></div>`;
+    document.querySelectorAll('[data-choice]').forEach(b=>b.onclick=()=>play(+b.dataset.choice));
+    document.querySelector('#skip-question')?.addEventListener('click',()=>skip());
+    document.querySelector('#replay-living')?.addEventListener('click',()=>{state=fresh();save();render();});
   }
-
-  if (step < 0) {
-    root.innerHTML = `<section class="quiz-layout"><div class="panel quiz-intro stack"><h2>${training ? 'Проверьте знание квартала' : 'Какая квартира вам подойдёт?'}</h2><p>${training ? 'Шесть вопросов о ЖК с пояснениями к каждому ответу.' : 'Ответьте на шесть вопросов о жизни, семье и привычках. В конце получите рекомендацию.'}</p><div class="actions">${action('Начать игру','start')}</div></div>${art}</section>`;
-    return;
-  }
-
-  const [prompt, options, key, hint] = questions[step];
-  const score = earned + (picked !== null && (!training || picked === key) ? 20 : 0);
-  root.innerHTML = `<section class="quiz-layout"><div class="panel stack">${progress(step + (picked !== null), questions.length, score, 'Ответы', score - earned)}<h2>${prompt}</h2><div class="options quiz-options">${options.map((label,i) => {
-    const state = picked === null ? '' : training && i === key ? ' correct' : training && picked === i ? ' wrong' : '';
-    const icon = training ? String.fromCharCode(1040 + i) : hint[i];
-    return action(`<span class="quiz-icon" aria-hidden="true">${icon}</span><span>${label}</span>`, 'answer', i, 'option quiz-option' + state, `aria-pressed="${picked === i}" ${picked !== null ? 'disabled' : ''}`);
-  }).join('')}</div>${picked !== null ? `<p class="feedback ${training&&picked!==key?'is-retry':'is-success'}" role="status">${training ? (picked === key ? 'Верно. ' : 'Ответ неверный. Правильный вариант отмечен. ') + hint : 'Ответ учтён в вашей рекомендации.'}</p>` : ''}<div class="actions">${action(step === questions.length-1 ? 'Узнать результат' : 'Следующий вопрос', 'next', '', 'btn', picked === null ? 'disabled' : '')}</div></div>${art}</section>`;
-}
-
-Game.init({modes:true, restart, onAction(name, value) {
-  if (name === 'start') step = 0;
-  if (name === 'answer') picked = Number(value);
-  if (name === 'next' && picked !== null) {
-    answers.push(picked);
-    picked = null;
-    step++;
-  }
-  render();
-  if (name === 'answer') root.querySelector('[data-action="next"]')?.focus();
-  if (step === (mode==='agent'?agent:buyer).length) root.querySelector('.reward .btn')?.focus();
-}});
+  function finishMarkup(){const preferences=[0,0,0];state.results.forEach(r=>{if(r.done)preferences[r.option]++;});const profile=['Тихий дом рядом с природой','Городской ритм и всё рядом','Пространство для семьи'][preferences.indexOf(Math.max(...preferences))];return `<p class="eyebrow">ВАШЕ ПРИКЛЮЧЕНИЕ ЗАВЕРШЕНО</p><h2>${state.results.some(r=>r.done)?profile:'Вы познакомились с кварталом'}</h2><p>Выполнено ${state.results.filter(r=>r.done).length} из 9 заданий. Результат прохождения: ${total()} Б. Новые начисления уже в общем кошельке.</p><div class="actions"><button class="btn" data-shop>Выбрать награду</button><button class="quiet" id="replay-living">Пройти ещё раз</button><a class="quiet" href="../index.html#games">Все игры</a></div>`;}
+  function play(option){const step=state.results.length;if(step>=9)return;const choice=questions[step].choices[option];MiniGames.open({type:choice[1],title:choice[0],subtitle:choice[2],difficulty:Math.floor(step/3)+1,variant:step*3+option,context:'living',reward:amount(step),onComplete:()=>complete(step,option),onSkip:()=>skip(step)});}
+  function complete(step,option){if(step!==state.results.length||step>=9)return;const earned=Loyalty.award('living-v3:'+state.day+':'+step,amount(step));state.results.push({option,done:true});save();render();celebrate(earned);}
+  function skip(step=state.results.length){if(step!==state.results.length||step>=9)return;state.results.push({option:null,done:false});save();render();}
+  function celebrate(earned){const el=document.createElement('div');el.className='living-celebration';el.innerHTML=`<strong>${earned?'+'+earned+' Б':'Задание выполнено'}</strong>${Array.from({length:18},(_,i)=>`<i style="--i:${i};--hue:${[45,130,180,260][i%4]}"></i>`).join('')}`;document.body.append(el);setTimeout(()=>el.remove(),1600);}
+  load();render();document.querySelector('[data-rules]').onclick=instructions;
+  Game.dialog.addEventListener('click',e=>{if(e.target===Game.dialog||e.target.closest('[data-close]'))Game.close();});
+  document.querySelector('#restart').onclick=()=>{state=fresh();save();render();};
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&state.day!==Loyalty.day()){Game.close();load();render();}});
+  instructions();
+})();
