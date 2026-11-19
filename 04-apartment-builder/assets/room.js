@@ -24,6 +24,16 @@ const ApartmentRoom = (() => {
     {wood:'#b7b39d',wall:'#ededdd',wallSide:'#9da38c',fabric:['#d7e3c1','#a3b487','#778468'],accent:['#d9b39b','#b78d70','#967259']}
   ];
   const clamp = (value,min,max)=>Math.min(max,Math.max(min,value));
+  const renderPixelBudget=1280*900;
+  function screenBounds(points){
+    let left=Infinity,top=Infinity,right=-Infinity,bottom=-Infinity;
+    for(const [x,y] of points){left=Math.min(left,x);top=Math.min(top,y);right=Math.max(right,x);bottom=Math.max(bottom,y);}
+    return {left,top,right,bottom};
+  }
+  function offscreen(bounds,width,height){return bounds.right<0||bounds.bottom<0||bounds.left>width||bounds.top>height;}
+  function shade(hex,factor){
+    return '#'+hex.slice(1).match(/../g).map(part=>Math.round(clamp(parseInt(part,16)*factor,0,255)).toString(16).padStart(2,'0')).join('');
+  }
   const {plans,contains} = ApartmentPlans;
 
   function floorPlan(state) {
@@ -66,6 +76,7 @@ const ApartmentRoom = (() => {
     for(const [other,[px,pz]] of Object.entries(state.placed)){
       if(other!==key)occupied.push([px,pz,...footprint(other,state.rotations?.[other]||0)]);
     }
+    if(state.walking&&state.walker)occupied.push([...state.walker.position,.46,.46]);
     return occupied.every(([ox,oz,ow,od])=>Math.abs(x-ox)>=(w+ow)/2+.045||Math.abs(z-oz)>=(d+od)/2+.045);
   }
 
@@ -98,7 +109,8 @@ const ApartmentRoom = (() => {
     const linen = new Image();
     linen.onload = schedule;
     linen.src = 'assets/linen-upholstery.webp';
-    let angle=-.64,lift=.64, zoom=1, drawing=false, alive=true, view, hitFaces=[];
+    let angle=-.64,lift=.64, zoom=1, panX=0, panY=0, walkDistance=4.2, drawing=false, alive=true, hitFaces=[];
+    const plankCache=new Map();
     const observer = new ResizeObserver(schedule);
     observer.observe(canvas);
 
@@ -108,23 +120,48 @@ const ApartmentRoom = (() => {
       requestAnimationFrame(draw);
     }
 
-    function draw() {
-      drawing=false;
-      if(!alive)return;
+    // Read current camera values for input as well as rendering: multiple wheel
+    // events can arrive before the next animation frame.
+    function cameraView(){
       const width=canvas.clientWidth,height=canvas.clientHeight;
-      if(!width||!height)return;
-      const dpi=Math.min(devicePixelRatio||1,2);
-      const px=Math.round(width*dpi),py=Math.round(height*dpi);
-      if(canvas.width!==px||canvas.height!==py) {canvas.width=px;canvas.height=py;}
-      ctx.setTransform(dpi,0,0,dpi,0,0);
-      const level=getState();
-      const palette=colors[level.palette];
-      const plan=floorPlan(level);
       const ax=Math.cos(angle),az=Math.sin(angle),sy=Math.sin(lift),cy=Math.cos(lift);
-      const overhead = lift>1.42;
-      const scale=Math.min(width/(overhead?12:14.1),height/(overhead?11.1:11.4))*zoom;
-      const ox=width/2,oy=height*(overhead?.52:.60);
-      const project=(x,y,z)=> {
+      const level=getState();
+      if(level.walking&&level.walker){
+        const [tx,tz]=level.walker.position,focal=Math.min(width,height)*1.1,cx=width/2,screenY=height*.48;
+        const cameraSpace=([x,y,z])=>{
+          x-=tx;y-=1;z-=tz;
+          return [x*ax-z*az,y*cy-(x*az+z*ax)*sy,walkDistance-(x*az+z*ax)*cy-y*sy];
+        };
+        const project=(x,y,z)=>{
+          const [u,v,depth]=cameraSpace([x,y,z]),safe=Math.max(.12,depth);
+          return [cx+u*focal/safe,screenY-v*focal/safe,-depth];
+        };
+        const clip=points=>{
+          const result=[];
+          for(let i=0;i<points.length;i++){
+            const a=points[i],b=points[(i+1)%points.length],da=cameraSpace(a)[2],db=cameraSpace(b)[2];
+            if(da>=.15)result.push(a);
+            if((da>=.15)!==(db>=.15)){
+              const t=(.15-da)/(db-da);result.push(a.map((value,j)=>value+(b[j]-value)*t));
+            }
+          }
+          return result;
+        };
+        const ground=(sx,sz)=>{
+          const rx=(sx-cx)/focal,ry=-(sz-screenY)/focal;
+          const eye=[tx+az*cy*walkDistance,1+sy*walkDistance,tz+ax*cy*walkDistance];
+          const ray=[ax*rx-az*sy*ry-az*cy,cy*ry-sy,-az*rx-ax*sy*ry-ax*cy];
+          if(ray[1]>=-.001)return null;
+          const t=-eye[1]/ray[1];
+          return t>0&&t<100?[eye[0]+ray[0]*t,eye[2]+ray[2]*t]:null;
+        };
+        return {ax,az,overhead:false,project,ground,clip};
+      }
+      const overhead=lift>1.42;
+      const scale=Math.max(.001,Math.min(width/(overhead?12:14.1),height/(overhead?11.1:11.4))*zoom);
+      const baseX=width/2,baseY=height*(overhead?.52:.60);
+      const ox=baseX+panX,oy=baseY+panY;
+      const project=(x,y,z)=>{
         const depth=x*az+z*ax;
         return [ox+(x*ax-z*az)*scale,oy+(depth*sy-y*cy)*scale,depth*cy+y*sy];
       };
@@ -132,15 +169,35 @@ const ApartmentRoom = (() => {
         const across=(sx-ox)/scale,depth=(sz-oy)/(scale*sy);
         return [across*ax+depth*az,-across*az+depth*ax];
       };
-      view={ground};
+      return {ax,az,overhead,ox,oy,baseX,baseY,project,ground};
+    }
+
+    function draw() {
+      drawing=false;
+      if(!alive)return;
+      const width=canvas.clientWidth,height=canvas.clientHeight;
+      if(!width||!height)return;
+      // Keep the HTML UI crisp while bounding the cost of the rasterized scene,
+      // including fullscreen and Retina displays. Input stays in CSS pixels.
+      const dpi=Math.min(devicePixelRatio||1,1,Math.sqrt(renderPixelBudget/(width*height)));
+      const px=Math.round(width*dpi),py=Math.round(height*dpi);
+      if(canvas.width!==px||canvas.height!==py) {canvas.width=px;canvas.height=py;}
+      ctx.setTransform(px/width,0,0,py/height,0,0);
+      const level=getState();
+      const palette=colors[level.palette];
+      const plan=floorPlan(level);
+      const {ax,az,overhead,project,clip}=cameraView();
       const groundFaces=[], faces=[];
       const patternFor = image => image.complete&&image.naturalWidth?ctx.createPattern(image,'repeat'):null;
       const textures={wood:patternFor(oak),linen:patternFor(linen)};
       const face=(points,fill,edge,owner,layer=faces,material=null)=>{
+        if(clip){points=clip(points);if(points.length<3)return;}
         const projected=points.map(([x,y,z])=>project(x,y,z));
+        const bounds=screenBounds(projected);
+        if(offscreen(bounds,width,height))return;
         let texture;
         const pattern = textures[material];
-        if(pattern){
+        if(pattern&&!level.walking){
           const [x,y,z]=points[0];
           const top=points.every(point=>point[1]===y);
           const [dx,dz]=[points[1][0]-x,points[1][2]-z];
@@ -151,7 +208,7 @@ const ApartmentRoom = (() => {
           const factor=material==='linen'?1/192:2/oak.naturalWidth;
           texture={pattern,matrix:[(u[0]-sx)*factor,(u[1]-screenY)*factor,(v[0]-sx)*factor,(v[1]-screenY)*factor,sx,screenY],opacity:material==='linen'?.37:.27};
         }
-        layer.push({points:projected,depth:projected.reduce((sum,p)=>sum+p[2],0)/projected.length,fill,edge,owner,material,texture});
+        layer.push({points:projected,bounds,depth:projected.reduce((sum,p)=>sum+p[2],0)/projected.length,fill,edge,owner,texture});
       };
       function box(x,z,w,d,h,tint,{y=0,owner,layer=faces,bevel=0,material=null}={}) {
         const x1=x-w/2,x2=x+w/2,z1=z-d/2,z2=z+d/2;
@@ -178,20 +235,13 @@ const ApartmentRoom = (() => {
           ctx.globalAlpha=opacity*item.texture.opacity;
           ctx.fillRect(-2500,-2500,5000,5000);ctx.restore();
         }
-        if(item.material) {
-          const ys=item.points.map(point=>point[1]);
-          const top=Math.min(...ys), bottom=Math.max(...ys);
-          if(bottom-top>1){
-            const shading=ctx.createLinearGradient(0,top,0,bottom);
-            shading.addColorStop(0,'#fff5db42');
-            shading.addColorStop(.34,'#fff5db00');
-            shading.addColorStop(1,'#301b202d');
-            ctx.fillStyle=shading;ctx.fill(shape);
-          }
-        }
         if(item.edge){ctx.strokeStyle=item.edge;ctx.lineWidth=.8;ctx.stroke(shape);}
+        if(item.owner&&item.owner===(level.hovered||level.active)){
+          ctx.fillStyle='#efcc6633';ctx.fill(shape);
+          ctx.strokeStyle='#e7aa30';ctx.lineWidth=2;ctx.stroke(shape);
+        }
         ctx.globalAlpha=1;
-        if(item.owner) hitFaces.push({shape,owner:item.owner});
+        hitFaces.push({shape,owner:item.owner,bounds:item.bounds});
       }
       function floor(x,z,w,d,fill,edge=null) {
         face([[x-w/2,.013,z-d/2],[x+w/2,.013,z-d/2],[x+w/2,.013,z+d/2],[x-w/2,.013,z+d/2]],fill,edge,null,groundFaces);
@@ -203,21 +253,27 @@ const ApartmentRoom = (() => {
         ctx.lineWidth=.8;
         ctx.stroke();
       }
-      const wall=[palette.wall,'#c18d80',palette.wallSide],trim=['#fff0e0','#d7a99e','#c4918b'];
+      const wall=level.wallColor?[level.wallColor,shade(level.wallColor,.82),shade(level.wallColor,.67)]:[palette.wall,'#c18d80',palette.wallSide],trim=['#fff0e0','#d7a99e','#c4918b'];
       const {fabric,accent}=palette;
       const timber=['#bc9068','#986b50','#704a38'];
       const stone=['#f4e5d8','#d7b8a8','#ad8a7e'];
       const cabinetry=['#b6ac93','#887e69','#6d6154'];
       const bronze=['#bba078','#897153','#67543d'];
-      const background = ctx.createRadialGradient(width*.53,height*.28,0,width*.56,height*.46,width*.78);
-      background.addColorStop(0,'#f9e6d2');background.addColorStop(.47,'#e7c1b6');background.addColorStop(1,'#bd8b94');
-      ctx.fillStyle=background;ctx.fillRect(0,0,width,height);
+      if(level.walking)ctx.fillStyle='#e7c1b6';
+      else{
+        const background=ctx.createRadialGradient(width*.53,height*.28,0,width*.56,height*.46,width*.78);
+        background.addColorStop(0,'#f9e6d2');background.addColorStop(.47,'#e7c1b6');background.addColorStop(1,'#bd8b94');
+        ctx.fillStyle=background;
+      }
+      ctx.fillRect(0,0,width,height);
       hitFaces=[];
-      const [sx,sh]=project(0,-.37,0);
-      const shadow=ctx.createRadialGradient(sx,sh,0,sx,sh,width*.44);
-      shadow.addColorStop(0,'#5e304f62');shadow.addColorStop(1,'#794b6800');
-      ctx.fillStyle=shadow;ctx.fillRect(0,0,width,height);
-      const groundTint=level.finish===2?'#bfacae':palette.wood;
+      if(!level.walking){
+        const [sx,sh]=project(0,-.37,0);
+        const shadow=ctx.createRadialGradient(sx,sh,0,sx,sh,width*.44);
+        shadow.addColorStop(0,'#5e304f62');shadow.addColorStop(1,'#794b6800');
+        ctx.fillStyle=shadow;ctx.fillRect(0,0,width,height);
+      }
+      const groundTint=level.floorColor||palette.wood;
       face(plan.outline.map(([x,z])=>[x,.005,z]),groundTint,'#93756455',null,groundFaces);
       for(let i=0;i<plan.outline.length;i++){
         const [x1,z1]=plan.outline[i], [x2,z2]=plan.outline[(i+1)%plan.outline.length];
@@ -226,33 +282,36 @@ const ApartmentRoom = (() => {
       }
       groundFaces.forEach(item=>paint(item));
       groundFaces.length=0;
-      function floorTexture() {
-        if(!textures.wood)return;
-        const [u,v]=project(0,.014,0), [ux,uy]=project(1,.014,0), [vx,vy]=project(0,.014,1);
-        ctx.save();
-        ctx.transform(ux-u,uy-v,vx-u,vy-v,u,v);
-        ctx.beginPath();plan.outline.forEach(([x,z],i)=>i?ctx.lineTo(x,z):ctx.moveTo(x,z));ctx.closePath();ctx.clip();
-        if(level.finish===1)ctx.rotate(Math.PI/2);
-        const tile=3.55/oak.naturalWidth;
-        ctx.scale(tile,tile);
-        ctx.fillStyle=textures.wood;
-        ctx.globalAlpha=.71;
-        ctx.fillRect(-7/tile,-7/tile,14/tile,14/tile);
+      function laminateFloor() {
+        const outline=plan.outline.map(([x,z])=>[x,.014,z]);
+        const visible=clip?clip(outline):outline;
+        if(visible.length<3)return;
+        ctx.save();ctx.beginPath();
+        visible.map(p=>project(...p)).forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));
+        ctx.closePath();ctx.clip();
+        if(!plankCache.has(plan.id)){
+          const boards=[];
+          for(let z=-plan.depth/2,row=0;z<plan.depth/2;z+=.19,row++){
+            const start=-plan.width/2-1.2+(row%3)*.4;
+            for(let x=start,column=0;x<plan.width/2;x+=1.2,column++){
+              boards.push({points:[[x,.014,z],[x+1.2,.014,z],[x+1.2,.014,z+.19],[x,.014,z+.19]],tone:(row+column)%5});
+            }
+          }
+          plankCache.set(plan.id,boards);
+        }
+        const shades=[.976,.988,1,1.012,1.024].map(factor=>shade(groundTint,factor));
+        ctx.strokeStyle=shade(groundTint,.81);ctx.lineWidth=.45;
+        for(const board of plankCache.get(plan.id)){
+          const polygon=clip?clip(board.points):board.points;
+          if(polygon.length<3)continue;
+          const points=polygon.map(p=>project(...p));
+          if(offscreen(screenBounds(points),width,height))continue;
+          ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();
+          ctx.fillStyle=shades[board.tone];ctx.fill();ctx.stroke();
+        }
         ctx.restore();
       }
-      if(level.finish===2) {
-        for(const zone of plan.zones)tiledFloor(zone.bounds,'#c1b0a5','#d4c3b7');
-      } else floorTexture();
-      function tiledFloor([x1,z1,x2,z2],colorA,colorB) {
-        for(let x=x1,i=0;x<x2-.001;x+=.48,i++)for(let z=z1,j=0;z<z2-.001;z+=.48,j++){
-          const w=Math.min(.48,x2-x),d=Math.min(.48,z2-z);
-          floor(x+w/2,z+d/2,w,d,(i+j)%2?colorA:colorB,'#86756768');
-        }
-      }
-      for(const zone of plan.zones.filter(zone=>zone.id.startsWith('bath')||zone.id==='balcony')){
-        const inset=zone.bounds.map((value,i)=>value+(i<2?.06:-.06));
-        tiledFloor(inset,zone.id==='balcony'?'#bdafa1':'#b9a99b','#d3c5b8');
-      }
+      laminateFloor();
       for(const [key,[x,z]] of Object.entries(level.placed)){
         const [w,d]=footprint(key,level.rotations?.[key]||0);
         floor(x,z,w,d,'#35271927');
@@ -260,7 +319,8 @@ const ApartmentRoom = (() => {
       for(const {horizontal,at,from,to} of plan.doors){
         const center=(from+to)/2;
         floor(horizontal?center:at,horizontal?at:center,horizontal?to-from:.18,horizontal?.18:to-from,'#ad886c','#714d3662');
-        for(const coordinate of [from+.03,to-.03])box(horizontal?coordinate:at,horizontal?at:coordinate,horizontal?.06:.20,horizontal?.20:.06,overhead?.10:.95,bronze);
+        for(const coordinate of [from+.03,to-.03])box(horizontal?coordinate:at,horizontal?at:coordinate,horizontal?.06:.20,horizontal?.20:.06,overhead?.10:2.1,bronze);
+        if(!overhead)box(horizontal?center:at,horizontal?at:center,horizontal?to-from:.16,horizontal?.16:to-from,.6,wall,{y:2.1,material:'paint'});
         if(overhead){
           const hinge=horizontal?[from,at]:[at,from];
           const end=horizontal?[from,at-(to-from)]:[at+(to-from),from];
@@ -268,15 +328,14 @@ const ApartmentRoom = (() => {
         }
       }
       for(const [x,z,w,d] of plan.perimeter){
-        const rear=z<-plan.depth*.25;
-        const height=overhead?.13:rear?1.35:.42;
-        box(x,z,w,d,height,wall,{material:'paint'});
-        box(x,z,w+.028,d+.028,.045,trim,{y:height});
+        const height=overhead?.13:2.7;
+        box(x,z,w,d,height-(overhead?0:.045),wall,{material:'paint'});
+        box(x,z,w+.028,d+.028,.045,trim,{y:height-.045});
       }
       for(const opening of plan.windows){
         const {horizontal,at,from,to}=opening;
         const center=(from+to)/2,width=to-from;
-        const sill=overhead?.11:.73,height=overhead?.06:1.43;
+        const sill=overhead?.11:.8,height=overhead?.06:1.35;
         const pane=['#cee6e4','#b0d5d3a9','#8cb8bbad'];
         const px=horizontal?center:at,pz=horizontal?at:center;
         box(px,pz,horizontal?width:.085,horizontal?.085:width,sill,wall);
@@ -286,12 +345,13 @@ const ApartmentRoom = (() => {
           box(horizontal?coordinate:at,horizontal?at:coordinate,.055,.055,height+.06,bronze,{y:sill+.04});
         }
         box(px,pz,horizontal?width+.05:.09,horizontal?.09:width+.05,.055,bronze,{y:sill+height+.04});
+        if(!overhead)box(px,pz,horizontal?width:.2,horizontal?.2:width,.4,wall,{y:2.3,material:'paint'});
       }
       for(const [x,z,w,d] of plan.walls){
-        const height=overhead?.13:.96;
-        box(x,z,w,d,height,wall,{material:'paint'});
+        const height=overhead?.13:2.7;
+        box(x,z,w,d,height-(overhead?0:.045),wall,{material:'paint'});
         box(x,z,w+.025,d+.025,.05,trim);
-        box(x,z,w+.025,d+.025,.035,trim,{y:height});
+        box(x,z,w+.025,d+.025,.045,trim,{y:height-.045});
       }
       for(const item of plan.fixtures){
         const [x,z,w,d]=item.bounds;
@@ -326,6 +386,10 @@ const ApartmentRoom = (() => {
       }
 
       for(const [key,point] of Object.entries(level.placed)) {
+        if(key===(level.hovered||level.active)){
+          const [w,d]=footprint(key,level.rotations?.[key]||0);
+          floor(point[0],point[1],w+.16,d+.16,'#f3cb5e66','#c38c1d');
+        }
         if(level.ghost?.key!==key) furnishing(key,point);
       }
       if(level.ghost) {
@@ -335,8 +399,31 @@ const ApartmentRoom = (() => {
         floor(point[0],point[1],w+.18,d+.18,valid?'#78a68388':'#c65c6577',valid?'#497651':'#912d4f');
         furnishing(key,point,true);
       }
+      if(level.walking&&level.walker){
+        const {position:[x,z],facing,phase}=level.walker;
+        const sway=Math.sin(phase)*.12,c=Math.cos(facing),s=Math.sin(facing);
+        const part=(dx,dz,w,d,h,y,tint)=>{
+          box(x+dx*c+dz*s,z-dx*s+dz*c,w,d,h,tint,{y,bevel:.035,owner:'__avatar'});
+        };
+        const shirt=['#387f83','#286269','#204c55'],pants=['#3e485b','#30394b','#222b3c'],skin=['#e5b78f','#c58f6d','#ad755b'];
+        floor(x,z,.55,.45,'#332c3f3b');
+        part(-.13,sway,.16,.19,.66,.08,pants);part(.13,-sway,.16,.19,.66,.08,pants);
+        part(-.13,.06+sway,.18,.29,.10,.02,pants);part(.13,.06-sway,.18,.29,.10,.02,pants);
+        part(0,0,.43,.25,.55,.73,shirt);
+        part(-.29,-sway,.13,.16,.46,.76,shirt);part(.29,sway,.13,.16,.46,.76,shirt);
+        part(-.29,-sway,.12,.15,.15,.64,skin);part(.29,sway,.12,.15,.15,.64,skin);
+        part(0,0,.12,.12,.12,1.28,skin);part(0,0,.29,.27,.29,1.37,skin);
+        part(0,-.015,.31,.28,.10,1.60,pants);
+        part(-.07,.141,.035,.025,.035,1.49,pants);part(.07,.141,.035,.025,.035,1.49,pants);
+      }
       groundFaces.forEach(item=>paint(item));
-      faces.sort((a,b)=>a.depth-b.depth).forEach(item=>paint(item,item.owner?.endsWith('-ghost') ? .69 : 1));
+      faces.sort((a,b)=>a.depth-b.depth).forEach(item=>{
+        // Cut away nearby foreground geometry so the follow camera can see the
+        // player even in a small hallway with a wall or wardrobe behind them.
+        const foreground=level.walking&&item.owner!=='__avatar'&&item.depth>-walkDistance+.25;
+        const opacity=foreground?(item.owner?.35:.18):1;
+        paint(item,opacity*(item.owner?.endsWith('-ghost')?.69:1));
+      });
       if(overhead){
         ctx.font='650 11px "Segoe UI", sans-serif';
         ctx.textAlign='center';
@@ -348,7 +435,8 @@ const ApartmentRoom = (() => {
       }
       if(onProjected){
         const target=level.suggestion;
-        onProjected(target?project(target[0],.04,target[1]):null);
+        const point=target?project(target[0],.04,target[1]):null;
+        onProjected(point&&(!level.walking||point[2]<-.15)&&point[0]>0&&point[0]<width&&point[1]>0&&point[1]<height?point:null);
       }
 
       function furnishing(key,[x,z],ghost=false) {
@@ -443,17 +531,34 @@ const ApartmentRoom = (() => {
     }
 
     return {
-      schedule, pixelToFloor(x,y){return view?.ground(x,y);},
+      schedule, pixelToFloor(x,y){return cameraView().ground(x,y);},
       hit(x,y){
         // The path was constructed in CSS pixels; hit testing uses an identity transform.
         ctx.save();ctx.resetTransform();
-        const result=[...hitFaces].reverse().find(item=>!item.owner.endsWith('-ghost')&&ctx.isPointInPath(item.shape,x,y))?.owner;
+        let result;
+        for(let i=hitFaces.length-1;i>=0;i--){
+          const {shape,owner,bounds}=hitFaces[i];
+          if(owner?.endsWith('-ghost')||x<bounds.left||x>bounds.right||y<bounds.top||y>bounds.bottom)continue;
+          if(ctx.isPointInPath(shape,x,y)){result=owner;break;}
+        }
         ctx.restore();
-        return result;
+        return pieces[result]?result:undefined;
       },
-      rotate(dx,dy){angle=clamp(angle+dx,-1.18,.72);lift=clamp(lift+dy,.32,1.49);schedule();},
-      setView(top){angle=top?0:-.64;lift=top?1.49:.64;zoom=1;schedule();},
-      scaleBy(amount){zoom=clamp(zoom+amount,.74,1.45);schedule();},
+      rotate(dx,dy){angle=(angle+dx)%(Math.PI*2);lift=clamp(lift+dy,getState().walking?.18:.08,getState().walking?1.15:Math.PI/2);schedule();},
+      pan(dx,dy){if(!getState().walking){panX+=dx;panY+=dy;schedule();}},
+      walkAngle(){return angle;},
+      setWalk(enabled){if(enabled){angle=(getState().walker?.facing||0)+Math.PI;lift=.48;walkDistance=4.2;}schedule();},
+      setView(top){angle=top?0:-.64;lift=top?1.49:.64;zoom=1;panX=0;panY=0;schedule();},
+      scaleBy(amount,x,y){
+        if(getState().walking){walkDistance=clamp(walkDistance-amount*3,1.8,7);schedule();return;}
+        const next=clamp(zoom+amount,.45,3.5);
+        if(Number.isFinite(x)&&Number.isFinite(y)){
+          const {ox,oy,baseX,baseY}=cameraView(),ratio=next/zoom;
+          panX=x-(x-ox)*ratio-baseX;
+          panY=y-(y-oy)*ratio-baseY;
+        }
+        zoom=next;schedule();
+      },
       destroy(){alive=false;observer.disconnect();}
     };
   }
