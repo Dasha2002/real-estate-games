@@ -8,11 +8,11 @@ const Loyalty = (() => {
   function day(date=new Date()) { return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-'); }
   function award(id,amount) { const v=read(); if(v.claims[id]||amount<0)return 0; v.claims[id]=true; v.balance+=amount; v.earned+=amount; save(v); return amount; }
   function spend(amount) { const v=read(); if(amount<0||v.balance<amount)return false; v.balance-=amount; save(v); return true; }
-  const offers=[['coffee','Кофе на прогулке',100,'Демокупон на напиток в кофейне квартала.'],['tour','Семейный выходной',250,'Демокупон на мастер-класс для двоих.'],['home','Подарок для нового дома',500,'Демокупон на набор для новосёла.']];
+  const offers=[['coffee','Кофе на прогулке',100,'Напиток в кофейне квартала.'],['tour','Семейный выходной',250,'Мастер-класс для двоих.'],['home','Подарок для нового дома',500,'Набор для новосёла.']];
   function shop() {
     const v=read();
     const coupons=v.rewards.map(r=>`<p class="coupon">${offers.find(o=>o[0]===r.id)?.[1]||'Награда'} · ${r.code}</p>`).join('');
-    Game.modal('Магазин наград',`<p>Ваш баланс: <strong>${v.balance} баллов</strong>. Награды демонстрационные, условия для клиентов определяет девелопер.</p><div class="shop-offers">${offers.map(([id,title,cost,desc])=>`<article class="shop-offer"><h3>${title}</h3><p>${desc}</p><button class="btn" data-buy="${id}" ${v.balance<cost?'disabled':''}>Обменять · ${cost} Б</button></article>`).join('')}</div>${coupons?'<h3>Ваши купоны</h3>'+coupons:''}`);
+    Game.modal('Магазин наград',`<p>Ваш баланс: <strong>${v.balance} баллов</strong>. </p><div class="shop-offers">${offers.map(([id,title,cost,desc])=>`<article class="shop-offer"><h3>${title}</h3><p>${desc}</p><button class="btn" data-buy="${id}" ${v.balance<cost?'disabled':''}>Обменять · ${cost} Б</button></article>`).join('')}</div>${coupons?'<h3>Ваши купоны</h3>'+coupons:''}`);
   }
   document.addEventListener('click',e=>{
     if(e.target.closest('[data-shop]'))shop();

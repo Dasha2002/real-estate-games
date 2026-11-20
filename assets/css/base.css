@@ -14,3 +14,9 @@ dialog{width:min(92vw,535px);max-height:90dvh;overflow:auto;border:1px solid var
 .dialog-inner fieldset{border:1px solid var(--line);border-radius:9px;padding:8px 12px}
 .dialog-inner fieldset label{display:flex;align-items:center;gap:9px;min-height:38px}
 .dialog-inner input[type=radio]{width:auto;accent-color:var(--accent)}
+html{scrollbar-gutter:stable}.modal-open{overflow:hidden!important}.modal-open .toy-world *{animation-play-state:paused!important}
+dialog.game-modal{position:fixed!important;inset:0!important;width:100%!important;height:100dvh!important;max-width:none!important;max-height:none!important;margin:0!important;padding:24px!important;overflow-y:auto!important;overflow-x:hidden!important;scrollbar-gutter:stable;border:0!important;background:transparent!important;box-shadow:none!important;border-radius:0!important;overscroll-behavior:contain}
+dialog.game-modal:not([open]){display:none}dialog.game-modal[open]{display:block}dialog.game-modal::backdrop{background:#352e29b8;backdrop-filter:blur(2px)}
+dialog.game-modal>.dialog-inner{width:min(100%,880px);min-width:0;max-height:none!important;overflow:visible!important;margin:12px auto;padding:28px;background:#fffaf0;border:2px solid #b89b7e;border-radius:24px;box-shadow:0 8px 0 #5e453b26,0 25px 90px #382b3233;box-sizing:border-box}
+dialog.game-modal .dialog-top{position:relative;display:flex;align-items:flex-start;gap:14px}dialog.game-modal .dialog-top h2{flex:1;min-width:0;font-size:clamp(1.3rem,3vw,2rem)}dialog.game-modal .dialog-top>.icon-btn{flex:none;order:3}
+@media(max-width:600px){dialog.game-modal{padding:14px!important}dialog.game-modal>.dialog-inner{padding:18px;margin:0 auto;border-radius:20px}}
