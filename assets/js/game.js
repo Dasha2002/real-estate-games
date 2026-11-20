@@ -4,6 +4,7 @@ const Game = (() => {
   const root = document.querySelector('#game');
   const modeRoot = document.querySelector('#mode');
   const dialog = document.querySelector('#dialog');
+  let scrollLock=null;
 
   function action(label, name, value = '', classes = 'btn', attributes = '') {
     return `<button type="button" class="${classes}" data-action="${name}" data-value="${value}" ${attributes}>${label}</button>`;
@@ -13,11 +14,17 @@ const Game = (() => {
     return `<div><div class="stats"><span>${label} · ${current} / ${total}</span><span class="score" role="status">${score} баллов ${gained ? `<span class="gain">+${gained}</span>` : ''}</span></div><progress class="meter" value="${current}" max="${total}" aria-label="${label}"></progress></div>`;
   }
 
-  function modal(title, content) {
+  function modal(title, content, kind='plain') {
+    dialog.dispatchEvent(new CustomEvent('modal-replace',{detail:{kind}}));
+    dialog.classList.add('game-modal');
+    if(!scrollLock){scrollLock={y:window.scrollY,position:document.body.style.position,top:document.body.style.top,width:document.body.style.width};document.body.style.position='fixed';document.body.style.top=-scrollLock.y+'px';document.body.style.width='100%';document.body.classList.add('modal-open');}
     dialog.setAttribute('aria-label', title);
     dialog.innerHTML = `<div class="dialog-inner"><div class="dialog-top"><h2>${title}</h2><button class="icon-btn" aria-label="Закрыть" type="button" data-close>×</button></div>${content}</div>`;
     if (!dialog.open) dialog.showModal();
+    dialog.scrollTop=0;
   }
+
+  dialog.addEventListener('close',()=>{if(dialog.open||!scrollLock)return;const lock=scrollLock;scrollLock=null;document.body.style.position=lock.position;document.body.style.top=lock.top;document.body.style.width=lock.width;document.body.classList.remove('modal-open');window.scrollTo(0,lock.y);});
 
   function close() {
     if (dialog.open) dialog.close();
