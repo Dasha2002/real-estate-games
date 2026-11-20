@@ -1,296 +1,127 @@
 'use strict';
 
-const junctions = {
-  gate:{position:[0,7.35],label:'Вход во двор',links:['cross']},
-  cross:{position:[0,4.95],label:'Пешеходная дорожка',links:['gate','play','ball','path','outside']},
-  play:{position:[-3.35,4.45],label:'Детская площадка',links:['cross','ball']},
-  ball:{position:[-5.3,4.95],label:'Мяч у скамейки',links:['play','cross']},
-  path:{position:[0,-2.7],label:'Дорожка между корпусами',links:['cross','court','bench','water','lobby']},
-  court:{position:[4.3,.55],label:'Спортивная площадка',links:['path']},
-  water:{position:[-2.3,-2.7],label:'Лейка у входа',links:['path','lobby']},
-  bench:{position:[1.85,-1.22],label:'Пергола и цветники',links:['path']},
-  outside:{position:[6.75,7.6],label:'Внешний проезд',links:['cross','garage']},
-  garage:{position:[6.4,6.42],label:'Въезд в паркинг',links:['outside']},
-  lobby:{position:[-5.1,-2.84],label:'Лобби',links:['water','path']}
-};
-const missions = [
-  {title:'Первый круг',steps:[['play','Осмотреть площадку']],detail:'Площадка находится внутри двора без машин. Из калитки к ней ведёт пешеходная дорожка.'},
-  {title:'Верните мяч',steps:[['ball','Подобрать мяч'],['court','Бросить мяч']],detail:'Для матчей во дворе предусмотрена отдельная спортивная площадка.'},
-  {title:'Полейте цветы',steps:[['water','Взять лейку'],['bench','Полить растения']],detail:'У перголы спроектирована тихая зона отдыха с клумбами и скамейками.'},
-  {title:'Найдите подземный паркинг',steps:[['outside','Осмотреть проезд'],['garage','Осмотреть рампу']],detail:'Внешний въезд в подземный паркинг не пересекает двор.'},
-  {title:'Завершите прогулку в лобби',steps:[['lobby','Осмотреть лобби']],detail:'Лобби соединяет вход в корпус с пешеходными дорожками двора.'}
-];
-const directions = {up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
-const keys = {ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right'};
-const blockers = [[-5.2,-6.4,4.7,3.65],[.1,-7.15,5.6,3],[6.4,-4.8,3.35,5],[6.4,5.3,2.8,1.5],[-3.3,2.55,2.3,1.68],[0,-1.9,2.9,1.2]];
-const markers = Object.keys(junctions).filter(key=>!['gate','cross','path'].includes(key)).map(key=>({key,position:[...junctions[key].position,.55]}));
+const {root,action}=Game;
+let state,scene,frame=0,lastTime=0,lastHud=-1,chosen='normal',target=null,announced=-1;
+const keys=new Set(),pointers=new Map();
+const keyDirections={ArrowLeft:-1,ArrowRight:1,KeyA:-1,KeyD:1};
+const keyLanes={ArrowUp:'blue',KeyW:'blue',ArrowDown:'brown',KeyS:'brown'};
+function plural(n,one,few,many){const a=n%100,b=n%10;return a>=11&&a<=14?many:b===1?one:b>=2&&b<=4?few:many;}
 
-const {root,action,reward,modal}=Game;
-const reduce = matchMedia('(prefers-reduced-motion: reduce)');
-let camera,position,mission,phase,trail,frame,lastTime,held,presses,effect,cargo,status,near;
+function record(level){try{return Math.max(0,Math.min(48,Number(localStorage.getItem('horizon-build-stack-v1-'+level))||0));}catch{return 0;}}
+function saveRecord(){try{localStorage.setItem('horizon-build-stack-v1-'+state.level,String(Math.max(record(state.level),state.lit)));}catch{}}
+function stopInput(){keys.clear();pointers.clear();target=null;}
+function stopFrame(){if(frame)cancelAnimationFrame(frame);frame=0;lastTime=0;}
 
-function restart() {
-  camera?.destroy();
-  cancelAnimationFrame(frame);
-  frame=0;
-  position=[...junctions.gate.position];
-  mission=0;
-  phase=0;
-  trail=[];
-  held=new Map();
-  presses=new Map();
-  effect=null;
-  cargo=null;
-  status='Коснитесь дорожки или используйте стрелки.';
-  near=false;
-  root.innerHTML=`<section class="world-stage" aria-label="Прогулка в 3D">
-    <div class="map-frame world-frame">
-      <canvas tabindex="0" aria-label="Квартал 3D. WASD или стрелки для движения, E для действия у цели. Перетаскивание поворачивает камеру."></canvas>
-      ${markers.map(({key})=>action('', 'pin',key,'world-marker',`data-pin="${key}" aria-label="Идти: ${junctions[key].label}" title="${junctions[key].label}" hidden`)).join('')}
-    </div>
-    <div class="world-hud"><div id="world-task"></div>${action('Маршрут','journal','','world-journal')}</div>
-    <div class="world-instruction" id="world-message" role="status"></div>
-    <div class="world-dock">
-      <div class="world-dpad" role="group" aria-label="Движение">${[['↑','up','Вперёд'],['←','left','Влево'],['↓','down','Назад'],['→','right','Вправо']].map(([symbol,key,label])=>action(symbol,'step',key,'world-control',`aria-label="${label}"`)).join('')}</div>
-      <div class="world-right">
-        ${action('', 'interact','','world-interact','id="world-interact" hidden')}
-        <div class="world-camera" role="group" aria-label="Камера">${[
-          ['↶','left','Повернуть влево'],['↷','right','Повернуть вправо'],['−','out','Отдалить'],['+','in','Приблизить']
-        ].map(([symbol,key,label])=>action(symbol,'camera',key,'world-control',`aria-label="${label}" title="${label}"`)).join('')}</div>
-      </div>
-    </div>
-  </section><p class="world-help">Стрелки или WASD — идти. E — действие у цели. Сцену можно повернуть перетаскиванием.</p>`;
-  camera=HorizonScene.mount(root.querySelector('.world-frame'),{view:'world',markers,onGround:moveToGround});
-  refresh();
-  showWalker(false);
+function restart(){
+  stopFrame();stopInput();scene?.destroy();state=MoveInArcade.create(chosen);lastHud=-1;announced=-1;
+  root.innerHTML=`<section class="movein" aria-label="Стройсборка">
+    <div class="arcade-topline"><div><p class="eyebrow">Два плана. Один пикап.</p><h2>Ловите материалы — стройте новый дом</h2></div><p class="round-rule">1 окно = 1 балл<br><span>Каждый раунд — 90 секунд</span></p></div>
+    <div class="arcade-levels" role="group" aria-label="Сложность">${Object.entries(MoveInArcade.levels).map(([key,level])=>action(`<strong>${level.title}</strong><span>${level.description}</span>`,'difficulty',key,'difficulty-card',`aria-label="${level.title}. ${level.description}" aria-pressed="${key===chosen}"`)).join('')}</div>
+    <div class="arcade-hud" aria-label="Состояние игры"><div><span>Осталось</span><strong id="time-left">1:30</strong></div><div><span>Окна / баллы</span><strong id="lit-count">0 <small>/ 48</small></strong></div><div><span>Груз в кузове</span><strong id="cargo-count">0 <small>/ 8</small></strong></div><div><span id="record-label">Рекорд · ${MoveInArcade.levels[chosen].title}</span><strong id="record-count">${record(chosen)} <small>окон</small></strong></div>${action('Пауза','pause','','quiet','id="pause-game" disabled aria-label="Поставить игру на паузу"')}</div>
+    <div class="construction-progress"><span>Сдано: <strong id="materials-count">0</strong> ед.</span><strong id="stack-multiplier">Груз ×1</strong><span id="next-window">До окна: 1000 ед.</span><progress id="build-progress" max="1000" value="0" aria-label="Материалы для следующего окна"></progress></div>
+    <div class="arcade-stage"><canvas class="arcade-canvas" tabindex="0" aria-label="Пикап на двух планах. Влево и вправо — движение. Вверх — синий дальний план, вниз — коричневый ближний. Пробел — сдать стопку на стройку."></canvas><div class="arcade-overlay" id="arcade-overlay"></div></div>
+    <div class="arcade-controls" aria-label="Управление пикапом"><div class="drive-controls" role="group" aria-label="Двигаться влево и вправо"><button type="button" class="drive-button" data-drive="-1" aria-label="Двигаться влево">←</button><button type="button" class="drive-button" data-drive="1" aria-label="Двигаться вправо">→</button></div>${action('На стройку · Пробел','submit','','btn submit-stack','id="submit-stack"')}<div class="lane-controls" role="group" aria-label="Выбрать план">${action('↑ Синий','lane','blue','lane-button blue','aria-pressed="false" aria-label="Дальний синий план"')}${action('↓ Коричневый','lane','brown','lane-button brown','aria-pressed="true" aria-label="Ближний коричневый план"')}</div></div>
+    <div class="arcade-notice" id="arcade-notice" role="status" aria-live="polite"></div><div id="arcade-result" hidden></div>
+    <details class="arcade-rules"><summary>Правила: планы, стопки и опасности</summary><div class="rule-grid"><p><strong>1. Совпадите с цветом</strong>← / → или A / D — движение. ↑ / W — дальний синий план, ↓ / S — ближний коричневый. Грузы ловятся только на своём плане. Оба цвета падают с одной высоты и с одной скоростью. На телефоне есть кнопки планов.</p><p><strong>2. Сдавайте стопку</strong>Пробел или «На стройку» мгновенно сдаёт все материалы из любой точки. Блок — 100, панель — 150, уголок — 200 ед. В кузове максимум 8 коробок: любая фигура считается одним грузом. За 1–3 коробки множитель ×1, за 4–6 — ×2, за 7–8 — ×3. Полный кузов не принимает новые грузы: сдайте их пробелом. Несданные материалы в конце не засчитываются.</p><p><strong>3. Стройте и уклоняйтесь</strong>Каждые 1000 ед. зажигают окно: это один итоговый балл. На второй и третьей сложности после 12 секунд падают опасные баллоны: касание сбивает стопку и ненадолго останавливает пикап. Готовые окна не гаснут.</p></div></details>
+  </section>`;
+  scene=MoveInScene.mount(root.querySelector('canvas'),()=>state);showOverlay();updateHud(true);scene.draw(state);
 }
-
-function target() { return missions[mission]?.steps[phase]; }
-
-function refresh() {
-  const current=missions[mission];
-  for(const {key} of markers) {
-    const pin=root.querySelector('[data-pin="'+key+'"]');
-    pin.hidden=target()?.[0]!==key;
-    pin.textContent=key==='ball'?'●':key==='water'?'◈':'◆';
-  }
-  root.querySelector('#world-task').innerHTML=current?`<p>Прогулка · ${mission+1} / ${missions.length} · ${mission*30} баллов</p><h2>${current.title}</h2><span>${junctions[target()[0]].label}</span>`:`<p>Задания · 5 / 5 · 200 баллов</p><h2>Прогулка завершена</h2>${action('Получить награду','finish')}`;
-  setWorldMessage(status);
-  refreshProximity();
+function showOverlay(){
+  root.querySelector('.movein').classList.toggle('is-live',state.phase!=='ready');
+  const overlay=root.querySelector('#arcade-overlay');overlay.hidden=state.phase==='running'||state.phase==='finished';
+  if(state.phase==='ready')overlay.innerHTML=`<div class="start-card"><span class="arcade-kicker">Стройсборка</span><h3>Загрузите пикап —<br>постройте дом</h3><p>Подставляйте пикап под синие грузы на дальнем плане и коричневые — на ближнем. Кузов вмещает 8 коробок. Пробел сдаёт весь груз.</p><div class="parcel-legend"><span><i class="parcel-dot blue" aria-hidden="true"></i>↑ Дальний план</span><span><i class="parcel-dot brown" aria-hidden="true"></i>↓ Ближний план</span></div>${action('Начать 90 секунд','start','','btn start-round')}<small>${MoveInArcade.levels[chosen].title} · Пробел — сдать · Esc — пауза</small></div>`;
+  if(state.phase==='paused')overlay.innerHTML=`<div class="start-card pause-card"><span class="arcade-kicker">Таймер остановлен</span><h3>Пауза на стройке</h3><p>Все материалы и готовые окна сохранены.</p>${action('Продолжить','resume','','btn')}</div>`;
 }
-function refreshProximity() {
-  const next=target();
-  near=Boolean(next&&distance(position,junctions[next[0]].position)<.93);
-  const button=root.querySelector('#world-interact');
-  button.hidden=!near;
-  if(near) button.textContent=next[1];
-  const pin=next&&root.querySelector('[data-pin="'+next[0]+'"]');
-  pin?.classList.toggle('near',near);
+function updateHud(force=false){
+  const stamp=Math.floor(state.elapsed*8);if(!force&&stamp===lastHud)return;lastHud=stamp;
+  const left=Math.max(0,Math.ceil(90-state.elapsed)),count=state.cargo.length,factor=MoveInArcade.multiplier(state);
+  root.querySelector('#time-left').textContent=Math.floor(left/60)+':'+String(left%60).padStart(2,'0');
+  root.querySelector('#time-left').classList.toggle('last-seconds',left<=15&&state.phase!=='ready');
+  root.querySelector('#lit-count').innerHTML=state.lit+' <small>/ 48</small>';
+  root.querySelector('#cargo-count').innerHTML=count+' <small>/ 8</small>';
+  root.querySelector('#cargo-count').classList.toggle('is-full',count===8);
+  root.querySelector('#materials-count').textContent=state.materials.toLocaleString('ru-RU');
+  root.querySelector('#stack-multiplier').textContent='Груз ×'+factor;
+  root.querySelector('#stack-multiplier').classList.toggle('bonus-active',factor>1);
+  root.querySelector('#next-window').textContent=state.lit===48?'Дом готов!':'До окна: '+(1000-state.materials%1000)+' ед.';
+  root.querySelector('#build-progress').value=state.lit===48?1000:state.materials%1000;
+  root.querySelector('#pause-game').disabled=state.phase!=='running'&&state.phase!=='paused';
+  root.querySelector('#pause-game').textContent=state.phase==='paused'?'Продолжить':'Пауза';
+  for(const button of root.querySelectorAll('[data-action="difficulty"]'))button.disabled=state.phase!=='ready'&&state.phase!=='finished';
+  for(const button of root.querySelectorAll('[data-action="lane"],[data-drive]'))button.disabled=state.phase!=='running';
+  for(const button of root.querySelectorAll('[data-action="lane"]'))button.setAttribute('aria-pressed',button.dataset.value===state.lane);
+  root.querySelector('#submit-stack').disabled=state.phase!=='running'||!state.cargo.length||state.elapsed<state.stunnedUntil;
+  root.querySelector('#submit-stack').textContent='На стройку · '+(count?'×'+factor:'Пробел');
+  if(force||announced!==state.notice.id){root.querySelector('#arcade-notice').textContent=state.notice.text;announced=state.notice.id;}
 }
-
-function distance(a,b) { return Math.hypot(a[0]-b[0],a[1]-b[1]); }
-
-function clearLine(from,to) {
-  const steps=Math.max(1,Math.ceil(distance(from,to)/.18));
-  for(let i=1;i<=steps;i++){
-    const portion=i/steps;
-    if(!passable(from[0]+(to[0]-from[0])*portion,from[1]+(to[1]-from[1])*portion))return false;
-  }
-  return true;
+function begin(){
+  if(state.phase!=='ready')return;
+  stopInput();MoveInArcade.start(state);lastTime=performance.now();showOverlay();updateHud(true);
+  root.querySelector('canvas').focus({preventScroll:true});frame=requestAnimationFrame(tick);
+  root.querySelector('.arcade-hud').scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
 }
-
-function gridPoint(point) {
-  const rounded=point.map(value=>Math.round(value*2)/2);
-  const candidates=[];
-  for(const dx of [0,-.5,.5]) for(const dz of [0,-.5,.5]) {
-    const cell=[rounded[0]+dx,rounded[1]+dz];
-    if(passable(...cell)&&clearLine(point,cell))candidates.push(cell);
-  }
-  return candidates.sort((a,b)=>distance(point,a)-distance(point,b))[0];
+function pause(){
+  if(state.phase!=='running')return;
+  MoveInArcade.pause(state);stopFrame();stopInput();state.moving=0;showOverlay();updateHud(true);scene.draw(state);
+  root.querySelector('[data-action="resume"]').focus({preventScroll:true});
 }
-
-function routeTo(end) {
-  if(clearLine(position,end))return [end];
-  const start=gridPoint(position),goal=gridPoint(end);
-  if(!start||!goal)return [];
-  const key=point=>point.join(',');
-  const queue=[start];
-  const parents=new Map([[key(start),null]]);
-  for(let i=0;i<queue.length;i++){
-    const cell=queue[i];
-    if(key(cell)===key(goal)) {
-      const nodes=[end];
-      for(let cursor=cell;cursor;cursor=parents.get(key(cursor)))nodes.unshift(cursor);
-      const path=[];
-      let anchor=position;
-      while(nodes.length){
-        let index=nodes.findLastIndex(point=>clearLine(anchor,point));
-        if(index<0)return [];
-        anchor=nodes[index];
-        path.push(anchor);
-        nodes.splice(0,index+1);
-      }
-      return path;
-    }
-    for(const [dx,dz] of Object.values(directions)){
-      const next=[cell[0]+dx*.5,cell[1]+dz*.5];
-      if(parents.has(key(next))||!passable(...next)||!clearLine(cell,next))continue;
-      parents.set(key(next),cell);
-      queue.push(next);
-    }
-  }
-  return [];
+function resume(){
+  if(state.phase!=='paused')return;
+  MoveInArcade.resume(state);lastTime=performance.now();showOverlay();updateHud(true);
+  root.querySelector('canvas').focus({preventScroll:true});frame=requestAnimationFrame(tick);
 }
-
-function passable(x,z) {
-  return Math.abs(x)<8&&Math.abs(z)<8&&!blockers.some(([ox,oz,w,d])=>Math.abs(x-ox)<w/2+.25&&Math.abs(z-oz)<d/2+.25);
+function tick(time){
+  frame=0;if(state.phase!=='running')return;
+  const direction=[...keys].reduce((n,key)=>n+(keyDirections[key]||0),0)+[...pointers.values()].reduce((a,b)=>a+b,0);
+  MoveInArcade.advance(state,Math.max(0,(time-lastTime)/1000),{direction,target});lastTime=time;scene.draw(state);updateHud();
+  if(state.phase==='finished'){finish();return;}frame=requestAnimationFrame(tick);
 }
-
-function setWorldMessage(message,retry=false) {
-  status = message;
-  const output = root.querySelector('#world-message');
-  output.textContent = status;
-  output.classList.toggle('is-retry',retry);
+function finish(){
+  stopFrame();stopInput();saveRecord();showOverlay();updateHud(true);
+  root.querySelector('#record-count').innerHTML=record(state.level)+' <small>'+plural(record(state.level),'окно','окна','окон')+'</small>';
+  const panel=root.querySelector('#arcade-result');panel.hidden=false;
+  panel.innerHTML=`<section class="arcade-result" aria-label="Результат раунда"><div><p class="eyebrow">90 секунд · ${MoveInArcade.levels[state.level].title}</p><h3>Зажжено окон: <span>${state.lit}</span> / 48</h3><p class="result-score">${state.lit} ${plural(state.lit,'балл','балла','баллов')} — по одному за каждое окно.</p><p>На стройку сдано ${state.materials.toLocaleString('ru-RU')} ед. материалов. Отправлено грузов: ${state.submitted}. Потерянных стопок: ${state.crashes}. Несданных грузов: ${state.cargo.length}.</p></div><div class="result-actions">${action('Ещё одна смена','again','','btn')}${action('Выбрать сложность','pick-level','','btn secondary')}${action('Посмотреть квартиры в Горизонте','lead','Посмотреть квартиры в Горизонте','quiet')}</div></section>`;
+  root.querySelector('#arcade-notice').textContent='Стройка завершена! Зажжено окон: '+state.lit+'. Результат: '+state.lit+' '+plural(state.lit,'балл','балла','баллов')+'.';
+  panel.setAttribute('tabindex','-1');panel.focus({preventScroll:true});
 }
-
-function moveToGround(x,z) {
-  if(!passable(x,z)){
-    setWorldMessage('Здесь нельзя пройти. Коснитесь свободной дорожки или выделенной метки.',true);
-    return;
-  }
-  travel([x,z]);
+function changeLane(lane){
+  if(MoveInArcade.switchLane(state,lane)){updateHud(true);scene.draw(state);}
 }
-
-function travel(destination) {
-  const point=Array.isArray(destination)?destination:junctions[destination].position;
-  if(distance(position,point)<.12) {refreshProximity();return;}
-  trail=routeTo(point);
-  if(!trail.length){
-    setWorldMessage('Отсюда нет прохода. Выберите другую точку или выделенную метку.',true);
-    return;
-  }
-  setWorldMessage('Подойдите к выделенной метке. Рядом с ней появится действие.');
-  if(reduce.matches&&trail.length) {
-    const end=trail.at(-1);
-    if(passable(...end))position=[...end];
-    trail=[];
-    showWalker(false);
-    refreshProximity();
-    return;
-  }
-  wake();
+function submit(){if(MoveInArcade.submit(state)){updateHud(true);scene.draw(state);}}
+function pointerTarget(event,chooseLane=false){
+  const rect=root.querySelector('canvas').getBoundingClientRect();
+  const pick=scene.targetAt(event.clientX-rect.left,event.clientY-rect.top,chooseLane);
+  target=pick.target;
+  if(chooseLane&&pick.lane!==state.lane)changeLane(pick.lane);
 }
-
-function move(dx,dz) {
-  if(passable(position[0]+dx,position[1]))position[0]+=dx;
-  if(passable(position[0],position[1]+dz))position[1]+=dz;
-}
-
-function showWalker(walking,time=performance.now()) {
-  camera.walk([...position],{walking:walking&&!reduce.matches,cargo,
-    effect:effect?{kind:effect.kind,pct:Math.min(.999,(time-effect.started)/effect.duration)}:null});
-}
-function wake() {
-  if(!frame){lastTime=performance.now();frame=requestAnimationFrame(tick);}
-}
-function tick(time) {
-  frame=0;
-  const dt=Math.min(.06,(time-lastTime)/1000);
-  lastTime=time;
-  let walking=false;
-  if(held.size) {
-    const vector=[...held.values()].reduce((total,key)=>total.map((value,i)=>value+directions[key][i]),[0,0]);
-    const length=Math.hypot(...vector);
-    if(length) {
-      const [dx,dz]=camera.direction(vector[0]/length,vector[1]/length);
-      move(dx*dt*5.9,dz*dt*5.9);
-      walking=true;
-    }
-  } else if(trail.length) {
-    const next=trail[0];
-    const remaining=distance(position,next);
-    if(remaining<Math.max(dt*5.9,.045)) {position=[...trail.shift()];}
-    else {
-      const before=[...position];
-      move((next[0]-position[0])*dt*5.9/remaining,(next[1]-position[1])*dt*5.9/remaining);
-      if(distance(before,position)<.0005)trail=[];
-    }
-    walking=true;
-  }
-  if(effect&&time-effect.started>=effect.duration)effect=null;
-  refreshProximity();
-  showWalker(walking,time);
-  if(held.size||trail.length||effect)frame=requestAnimationFrame(tick);
-}
-
-function interact() {
-  if(!near||!target())return;
-  const [key]=target(),current=missions[mission];
-  if(key==='ball')cargo='ball';
-  if(key==='water')cargo='water';
-  if(key==='court'||key==='bench') {
-    cargo=null;
-    if(!reduce.matches)effect={kind:key==='court'?'throw':'water',started:performance.now(),duration:680};
-  }
-  phase++;
-  if(phase===current.steps.length) {
-    mission++;
-    phase=0;
-    status=target()?'+30 баллов. Идите к следующей метке: '+junctions[target()[0]].label+'.':'Все поручения выполнены. Нажмите «Получить награду».';
-  } else status=key==='ball'?'Мяч у вас. Дойдите до спортивной площадки.':key==='water'?'Лейка у вас. Дойдите до перголы.':'Теперь пройдите от проезда до рампы.';
-  refresh();
-  showWalker(false);
-  root.querySelector(target()?'canvas':'[data-action="finish"]').focus({preventScroll:true});
-  if(effect)wake();
-}
-
-function journal() {
-  modal('Маршрут прогулки',`<div class="world-log">${missions.map((item,i)=>`<article><h3>${i<mission?'✓ ':i===mission?'◆ ':''}${item.title}</h3><p>${i<mission?item.detail:i===mission?'Сейчас: '+junctions[target()[0]].label:'Откроется позже'}</p></article>`).join('')}</div>`);
-}
-
 root.addEventListener('pointerdown',event=>{
-  if(event.button!==0)return;
-  const button=event.target.closest('[data-action="step"]');
-  const pin=event.target.closest('[data-pin]');
-  if(button) {
-    trail=[];
-    held.set(event.pointerId,button.dataset.value);
-    button.setPointerCapture(event.pointerId);
-    wake();
-  } else if(pin&&event.pointerType==='touch')presses.set(event.pointerId,{key:pin.dataset.pin,x:event.clientX,y:event.clientY});
+  if(state.phase!=='running'||event.button!==0)return;
+  const drive=event.target.closest('[data-drive]');
+  if(drive){event.preventDefault();target=null;pointers.set(event.pointerId,Number(drive.dataset.drive));drive.setPointerCapture(event.pointerId);return;}
+  if(event.target.matches('canvas')){event.preventDefault();pointerTarget(event,true);event.target.setPointerCapture(event.pointerId);}
 });
-root.addEventListener('pointerup',event=>{
-  const press=presses.get(event.pointerId);
-  held.delete(event.pointerId);
-  presses.delete(event.pointerId);
-  if(press?.key&&Math.hypot(event.clientX-press.x,event.clientY-press.y)<10)travel(press.key);
+root.addEventListener('pointermove',event=>{
+  if(state.phase==='running'&&event.target.matches('canvas')&&(event.pointerType==='mouse'||event.buttons===1))pointerTarget(event,event.pointerType!=='mouse');
 });
-root.addEventListener('pointercancel',event=>{held.delete(event.pointerId);presses.delete(event.pointerId);});
-root.addEventListener('keydown',event=>{
-  if(!event.target.matches('canvas'))return;
-  const key=event.key.toLowerCase();
-  if(key==='e'||event.code==='KeyE') {event.preventDefault(); if(!event.repeat)interact(); return;}
-  const direction=keys[event.key]||keys[key]||keys[event.code.replace(/^Key/,'').toLowerCase()];
-  if(!direction)return;
-  event.preventDefault();
-  trail=[];
-  held.set(event.code,direction);
-  wake();
-});
-root.addEventListener('keyup',event=>{held.delete(event.code);});
-root.addEventListener('focusout',event=>{if(event.target.matches('canvas'))held.forEach((_,id)=>{if(typeof id==='string')held.delete(id);});});
-window.addEventListener('blur',()=>held?.clear());
-
-Game.init({restart,onAction(name,value){
-  if(name==='camera')camera.control(value);
-  if(name==='pin')travel(value);
-  if(name==='interact')interact();
-  if(name==='journal')journal();
-  if(name==='step') {
-    const vector=camera.direction(...directions[value]);
-    move(vector[0]*.26,vector[1]*.26);
-    refreshProximity();
-    showWalker(false);
+root.addEventListener('pointerup',event=>pointers.delete(event.pointerId));
+root.addEventListener('pointercancel',event=>{pointers.delete(event.pointerId);if(event.target.matches('canvas'))target=null;});
+document.addEventListener('keydown',event=>{
+  if(event.target.closest('input,textarea,select,[contenteditable]')||Game.dialog.open)return;
+  if(state.phase==='running'){
+    if(keyDirections[event.code]){event.preventDefault();target=null;keys.add(event.code);}
+    if(keyLanes[event.code]){event.preventDefault();if(!event.repeat)changeLane(keyLanes[event.code]);}
+    if(event.code==='Space'){event.preventDefault();if(!event.repeat)submit();}
   }
-  if(name==='finish')modal('Экскурсия завершена',reward({title:'Гость Горизонта',score:200,badge:'Виртуальный сертификат',detail:'Пять поручений выполнены. Вы осмотрели двор, зоны отдыха, паркинг и лобби.',cta:'Записаться на экскурсию'}));
+  if((event.key==='Escape'||event.code==='KeyP')&&!event.repeat&&(state.phase==='running'||state.phase==='paused')){
+    event.preventDefault();state.phase==='running'?pause():resume();
+  }
+});
+document.addEventListener('keyup',event=>keys.delete(event.code));
+document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});window.addEventListener('blur',pause);
+Game.init({restart,onAction(name,value){
+  if(name==='difficulty'&&MoveInArcade.levels[value]&&(state.phase==='ready'||state.phase==='finished')){chosen=value;restart();}
+  if(name==='start')begin();if(name==='pause')state.phase==='running'?pause():resume();if(name==='resume')resume();
+  if(name==='again'){restart();begin();}
+  if(name==='pick-level'){restart();root.querySelector('[data-action="difficulty"][aria-pressed="true"]').focus({preventScroll:true});}
+  if(name==='lane')changeLane(value);if(name==='submit')submit();
 }});
