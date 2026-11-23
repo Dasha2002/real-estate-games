@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="Строитель прыгает по лесам вдоль строящегося дома">
+<defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#102a4b"/><stop offset="1" stop-color="#719ab0"/></linearGradient><linearGradient id="wall" x2="1" y2="1"><stop stop-color="#dfd9c6"/><stop offset="1" stop-color="#98a8ac"/></linearGradient></defs>
+<path fill="url(#sky)" d="M0 0h640v360H0z"/><circle cx="523" cy="74" r="43" fill="#f4d69b"/><path fill="#254866" opacity=".7" d="M0 293h36v-97h57v97h24V177h49v116h52V222h59v71h24V184h53v109h40V211h56v82h48V160h58v133h84v67H0z"/>
+<path fill="url(#wall)" d="M194 51h243v309H194z"/><path fill="#b5c5c4" d="M188 45h255v12H188zm0 90h255v12H188zm0 90h255v12H188zm0 90h255v12H188z"/><path fill="#5d7886" d="M197 57h8v303h-8zm232 0h8v303h-8z"/>
+<g fill="#2d5871"><path d="M220 71h45v49h-45zm73 0h45v49h-45zm73 0h45v49h-45zm-146 90h45v49h-45zm73 0h45v49h-45zm73 0h45v49h-45zm-146 90h45v49h-45zm73 0h45v49h-45zm73 0h45v49h-45z"/></g><g stroke="#c4d1ce" stroke-width="3"><path d="M242 71v49m73-49v49m73-49v49M242 161v49m73-49v49m73-49v49m-146 41v49m73-49v49m73-49v49"/></g>
+<path stroke="#e9b266" stroke-width="9" d="M425 19V0m-160 26h292M425 0l-91 26M425 0l91 26"/><path stroke="#d9deda" stroke-width="2" d="M277 26v57"/><path fill="#e9b266" d="M270 80h14v13h-14z"/>
+<g fill="#ddaa77" stroke="#7c6156" stroke-width="3"><path d="M84 267h148v14H84zm38-83h137v14H122zm222 64h126v14H344zm95-86h109v14H439z"/></g><g fill="#4fb1c0" stroke="#d8f1e7" stroke-width="2"><path d="M47 218h121v14H47zm325-97h117v14H372z"/></g>
+<g transform="translate(328 205)"><path d="M-5 23l-9 21m19-21 10 21" stroke="#213e58" stroke-width="8" stroke-linecap="round"/><path d="M-13-7h26v32h-26z" fill="#e87646"/><path d="M-13-1-29 15m42-16 28-12" stroke="#eabd93" stroke-width="7" stroke-linecap="round"/><circle cy="-17" r="12" fill="#f3c6a0"/><path d="M-17-28h34v8h-34zm4-10h26v12h-26z" fill="#f1bd5b"/></g>
+<g fill="#efbd75" stroke="#ac6c4a" stroke-width="2"><rect x="92" y="166" width="25" height="18" rx="3"/><rect x="449" y="142" width="25" height="18" rx="3"/><rect x="372" y="229" width="25" height="18" rx="3"/></g>
+<path fill="#142f49" opacity=".38" d="M0 302h640v58H0z"/>
+</svg>
