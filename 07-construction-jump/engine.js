@@ -3,6 +3,7 @@
 const ConstructionJump=(()=>{
   const width=400,height=640,base=70,floorHeight=180;
   const gravity=1700,jumpSpeed=710,moveSpeed=255,playerRadius=15;
+  const platformWidth=88;
   const springSpeed=jumpSpeed*Math.sqrt(2.25);
   const boosts={propeller:{name:'Каска с пропеллером',duration:1.6,speed:390},jetpack:{name:'Джетпак',duration:2.1,speed:510},crane:{name:'Подъёмник крана',duration:1.8,speed:430}};
   const tiers=[{at:0,name:'Разминка'},{at:1200,name:'Рабочий ритм'},{at:3000,name:'Высотные работы'},{at:5500,name:'Экстрим'},{at:100*floorHeight,name:'За облаками'}];
@@ -44,7 +45,7 @@ const ConstructionJump=(()=>{
     const wrapSection=state.routePlan.mode==='edge';
     const roll=random(),type=hard?'moving':wrapSection?'normal':id<3?'normal':id%11===0?'spring':roll<.09+.25*t?'fragile':roll<.18+.55*t?'moving':'normal';
     const platform={id:++state.nextId,route:id,x:state.nextX,anchor:state.nextX,y:state.nextY,
-      w:104-31*t,type,hard,wrap:wrapSection&&Math.abs(state.nextX-previousX)>width/2,broken:false,
+      w:platformWidth,type,hard,wrap:wrapSection&&Math.abs(state.nextX-previousX)>width/2,broken:false,
       pattern:state.routePlan.mode,phase:random()*Math.PI*2,
       speed:hard?5.8+2*pressure+random()*.5:1.6+2.5*t,amplitude:hard?14+random()*8:18+20*t};
     state.platforms.push(platform);
@@ -53,8 +54,12 @@ const ConstructionJump=(()=>{
     if(random()<.72-.59*t && !wrapSection && t<.6){
       const offset=(random()<.5?-1:1)*(95+random()*25);
       const x=clamp(state.nextX+offset,45,width-45);
-      if(Math.abs(x-state.nextX)>63)state.platforms.push({id:++state.nextId,route:null,x,anchor:x,
-        y:state.nextY-12+random()*25,w:83-17*t,type:'normal',broken:false});
+      const extra={id:state.nextId+1,route:null,x,anchor:x,y:state.nextY-12+random()*25,w:platformWidth,type:'normal',broken:false};
+      // Reserve the full travel envelope, so nearby platforms never intersect
+      // later when a moving scaffold changes direction.
+      const clear=state.platforms.every(other=>Math.abs(extra.y-other.y)>=48 ||
+        Math.abs(extra.anchor-other.anchor)>=(extra.w+other.w)/2+12+(other.type==='moving'?other.amplitude:0));
+      if(clear){state.nextId++;state.platforms.push(extra);}
     }
     if(!wrapSection && id>4 && id%27===0){
       const kind=['propeller','jetpack','crane'][Math.floor(id/27)%3];
@@ -80,12 +85,12 @@ const ConstructionJump=(()=>{
   }
 
   function create(random=Math.random){
-    const first={id:0,route:0,x:width/2,anchor:width/2,y:base,w:126,type:'base',broken:false};
+    const first={id:0,route:0,x:width/2,anchor:width/2,y:base,w:platformWidth,type:'base',broken:false};
     const state={phase:'ready',time:0,random,player:{x:width/2,y:base,vy:0},camera:0,maxHeight:base,
       platforms:[first],materials:[],powerups:[],obstacles:[],shots:[],effects:[],destroyed:0,shootAt:0,
       boost:null,boostsUsed:0,collected:0,bounces:0,lastRoute:0,nextRoute:0,nextId:0,
       nextY:base,nextX:width/2,routePlan:null,nextObstacle:12+Math.floor(random()*7),lastLandingY:base,tier:0,
-      notice:'Поднимайтесь по лесам. Касание платформы автоматически подбрасывает строителя.'};
+      notice:'Поднимайтесь по лесам. Касание платформы автоматически подбрасывает Инни.'};
     fillAhead(state);return state;
   }
 
@@ -172,7 +177,7 @@ const ConstructionJump=(()=>{
     const nextTier=tier(state.maxHeight);
     if(nextTier>state.tier){state.tier=nextTier;state.notice=`Новый этап: ${tiers[nextTier].name.toLowerCase()}. Лесов меньше, движение быстрее.`;}
     fillAhead(state);pruneBehind(state);
-    if(p.y<state.camera-65){state.phase='failed';state.notice='Строитель сорвался. Попробуйте ещё раз.';}
+    if(p.y<state.camera-65){state.phase='failed';state.notice='Инни сорвался. Попробуйте ещё раз.';}
   }
 
   function advance(state,seconds,direction=0){
@@ -182,7 +187,7 @@ const ConstructionJump=(()=>{
       const dt=Math.min(1/120,remaining);tick(state,dt,direction);remaining-=dt;
     }
   }
-  return {width,height,base,floorHeight,gravity,jumpSpeed,springSpeed,boosts,moveSpeed,tiers,difficulty,tier,wind,
+  return {width,height,base,floorHeight,platformWidth,gravity,jumpSpeed,springSpeed,boosts,moveSpeed,tiers,difficulty,tier,wind,
     create,start,pause,resume,shoot,advance,floors,score};
 })();
 if(typeof module!=='undefined')module.exports=ConstructionJump;

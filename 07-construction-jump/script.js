@@ -26,18 +26,12 @@ function restart(){
   stopFrame();clearInput();state=ConstructionJump.create();lastHud='';
   root.innerHTML=`<div class="jump-layout">
     <section class="jump-card" aria-label="На высоту">
-      <div class="jump-hud"><div><span>Этаж</span><strong id="floor-count">0</strong></div><div><span>Материалы</span><strong id="material-count">0</strong></div><div><span>Очки</span><strong id="score-count">0</strong></div></div>
-      <div class="jump-screen"><canvas tabindex="0" aria-label="Бесконечный подъём по строительным лесам. Стрелки влево и вправо или A и D управляют движением. На телефоне удерживайте кнопки под игрой."></canvas><div class="jump-overlay" id="jump-overlay"></div></div>
-      <div class="jump-controls" role="group" aria-label="Управление строителем"><button class="jump-drive" data-drive="-1" type="button" aria-label="Двигаться влево">←</button><button class="jump-fire" data-action="shoot" data-shoot type="button" aria-label="Стрелять вверх. Пробел на клавиатуре.">↑ Огонь</button><button class="jump-drive" data-drive="1" type="button" aria-label="Двигаться вправо">→</button></div>
+      <div class="jump-hud"><div><span>Этаж</span><strong id="floor-count">0</strong></div><div><span>Материалы</span><strong id="material-count">0</strong></div><div><span>Очки</span><strong id="score-count">0</strong></div><button type="button" class="jump-pause" data-action="pause" id="pause-button" aria-label="Пауза" disabled>Ⅱ</button></div>
+      <div class="jump-screen"><canvas tabindex="0" aria-label="Инни поднимается по строительным лесам. Стрелки влево и вправо или A и D управляют движением. На телефоне удерживайте кнопки под игрой."></canvas><div class="jump-overlay" id="jump-overlay"></div></div>
+      <div class="jump-controls" role="group" aria-label="Управление Инни"><button class="jump-drive" data-drive="-1" type="button" aria-label="Двигаться влево">←</button><button class="jump-fire" data-action="shoot" data-shoot type="button" aria-label="Стрелять вверх. Пробел на клавиатуре.">↑ Огонь</button><button class="jump-drive" data-drive="1" type="button" aria-label="Двигаться вправо">→</button></div>
     </section>
-    <aside class="panel jump-side stack"><div><p class="eyebrow">Бесконечная стройка</p><h2>Как высоко вы подниметесь?</h2><p>Строитель прыгает сам. Направляйте его на леса, собирайте кирпичи и стройте этаж за этажом. Чем выше вы поднимаетесь, тем сложнее маршрут.</p></div>
-      <div class="jump-progress"><div class="stats"><span>До следующего этажа</span><strong id="height-label">0%</strong></div><progress id="height-progress" max="100" value="0" aria-label="Прогресс до следующего этажа"></progress></div>
-      <div class="jump-record"><span>Ваш рекорд</span><strong id="best-score">${best} очков</strong></div>
-      <div class="jump-difficulty"><span>Этап</span><strong id="difficulty-label">Разминка</strong><span id="wind-label">Штиль</span></div>
-      <div class="jump-rules"><h3>Как играть</h3><p><strong>← →</strong> или <strong>A D</strong> — движение. На телефоне удерживайте кнопки или касайтесь левой и правой половины экрана.</p><p><strong>Голубые леса</strong> двигаются, <strong>треснувшие</strong> ломаются, а площадка с пружиной даёт высоту прыжка ×2,25.</p><p><strong>Коснитесь буста:</strong> каска с пропеллером, джетпак или крюк крана автоматически поднимут вас. Во время подъёма можно двигаться в стороны.</p><p>Ветер сносит по стрелкам. После <strong>50-го этажа</strong> встречаются маршруты через край экрана: уходите за край и появляйтесь на другой стороне. После <strong>100-го этажа</strong> остаются только быстрые движущиеся платформы, а переходы между краями встречаются чаще. За кирпич — 15 очков. <strong>P / Esc</strong> — пауза.</p></div>
-      <p class="jump-combat-rule"><strong>Подвешенный груз:</strong> столкновение сбоку или снизу завершает игру. Прыгните сверху для пружинного отскока или разрушьте его выстрелом. Во время любого буста вы неуязвимы к грузам. <strong>Пробел / «↑ Огонь»</strong> — стрелять вверх; можно удерживать.</p>
-      ${action('Пауза','pause','','quiet jump-pause','id="pause-button" disabled')}<p class="jump-status" id="jump-status" role="status" aria-live="polite"></p>
-    </aside>
+    <p class="visually-hidden" id="jump-status" role="status" aria-live="polite"></p>
+
   </div>`;
   resizeCanvas();showOverlay();updateHud(true);
 }
@@ -45,25 +39,25 @@ function showOverlay(){
   const overlay=root.querySelector('#jump-overlay');overlay.hidden=state.phase==='running';
   overlay.classList.remove('is-ending','is-result');
   if(state.phase==='failed')overlay.classList.add('is-result');
-  if(state.phase==='ready')overlay.innerHTML=`<div class="jump-dialog"><span class="jump-kicker">Бесконечная стройка</span><h2>Выше и выше</h2><p>Прыгайте по лесам и собирайте материалы. С каждым этажом путь становится сложнее.</p>${action('Начать подъём','start','','btn')}<small>Стрелки / A D · на телефоне — кнопки или касание экрана</small></div>`;
+  if(state.phase==='ready')overlay.innerHTML=`<div class="jump-dialog"><span class="jump-portrait" aria-hidden="true"></span><span class="jump-kicker">ИННИ НА ВЫСОТЕ</span><h2>ВЫШЕ С ИННИ</h2><p>Прыгайте по лесам и собирайте материалы. С каждым этажом путь становится сложнее.</p>${action('Начать подъём','start','','btn')}<small>Стрелки / A D · на телефоне — кнопки или касание экрана</small></div>`;
   if(state.phase==='paused')overlay.innerHTML=`<div class="jump-dialog"><span class="jump-kicker">Пауза</span><h2>Передышка на лесах</h2><p>Высота и собранные материалы сохранены.</p>${action('Продолжить','resume','','btn')}</div>`;
-  if(state.phase==='failed')overlay.innerHTML=`<div class="jump-dialog result"><span class="jump-kicker">Попытка завершена</span><h2>${ConstructionJump.floors(state)} этажей!</h2><p class="jump-result-score">${ConstructionJump.score(state)} очков</p><p>${state.notice}</p><p>${state.collected} материалов · грузов: ${state.destroyed}</p><p>Рекорд: ${best} очков</p>${action('Подняться ещё выше','restart','','btn')}</div>`;
+  if(state.phase==='failed')overlay.innerHTML=`<div class="jump-dialog result"><span class="jump-portrait" aria-hidden="true"></span><span class="jump-kicker">Попытка завершена</span><h2>${ConstructionJump.floors(state)} этажей!</h2><p class="jump-result-score">${ConstructionJump.score(state)} очков</p><p>${state.notice}</p><p>${state.collected} материалов · грузов: ${state.destroyed}</p><p>Рекорд: ${best} очков</p>${action('Подняться ещё выше','restart','','btn')}</div>`;
+  if(state.phase==='ready' && typeof JumpArt!=='undefined' && !JumpArt.ready){
+    const button=overlay.querySelector('[data-action="start"]');
+    if(button){button.disabled=true;button.textContent='Знакомимся с Инни…';}
+  }
 }
 function updateHud(force=false){
   const wind=ConstructionJump.wind(state);
   const stamp=[ConstructionJump.floors(state),state.collected,ConstructionJump.score(state),state.phase,state.tier,Math.sign(wind),state.notice].join(':');
   if(!force&&stamp===lastHud)return;lastHud=stamp;
-  const floors=ConstructionJump.floors(state),fraction=(state.maxHeight-ConstructionJump.base)%ConstructionJump.floorHeight;
+  const floors=ConstructionJump.floors(state);
   root.querySelector('#floor-count').textContent=floors;
   root.querySelector('#material-count').textContent=state.collected;
   root.querySelector('#score-count').textContent=ConstructionJump.score(state);
-  root.querySelector('#height-label').textContent=`${Math.round(fraction/ConstructionJump.floorHeight*100)}%`;
-  root.querySelector('#height-progress').value=Math.round(fraction/ConstructionJump.floorHeight*100);
-  root.querySelector('#best-score').textContent=`${best} очков`;
-  root.querySelector('#difficulty-label').textContent=ConstructionJump.tiers[state.tier].name;
-  root.querySelector('#wind-label').textContent=wind?`Ветер ${wind>0?'→':'←'}`:'Штиль';
   const pause=root.querySelector('#pause-button');pause.disabled=state.phase!=='running'&&state.phase!=='paused';
-  pause.textContent=state.phase==='paused'?'Продолжить':'Пауза';
+  pause.textContent=state.phase==='paused'?'▶':'Ⅱ';
+  pause.setAttribute('aria-label',state.phase==='paused'?'Продолжить':'Пауза');
   root.querySelector('[data-shoot]').disabled=state.phase!=='running';
   root.querySelector('#jump-status').textContent=state.notice;
 }
@@ -74,6 +68,7 @@ function direction(){
 }
 function start(){
   if(state.phase!=='ready')return;
+  if(typeof JumpArt!=='undefined' && !JumpArt.ready)return;
   ConstructionJump.start(state);showOverlay();updateHud(true);
   root.querySelector('canvas').focus({preventScroll:true});lastTime=performance.now();frame=requestAnimationFrame(tick);
 }
@@ -146,3 +141,6 @@ window.addEventListener('keyup',event=>heldKeys.delete(event.code));
 window.addEventListener('blur',()=>{if(state.phase==='running')pause();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state.phase==='running')pause();});
 window.addEventListener('resize',resizeCanvas);
+if(typeof JumpArt!=='undefined')JumpArt.preload().then(()=>{
+  if(state.phase==='ready'){resizeCanvas();showOverlay();}
+});

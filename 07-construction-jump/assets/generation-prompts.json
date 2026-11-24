@@ -1,0 +1,61 @@
+{
+  "tool": "built-in image_gen",
+  "style": "Warm toy-like 3D construction sprites, transparent alpha, orthographic front camera",
+  "assets": [
+    {
+      "key": "worker",
+      "file": "worker.png",
+      "prompt": "Use case: stylized-concept. Production sprite for a polished 2D vertical jumping game about housing construction. Cohesive premium toy-like 3D render: softly beveled forms, physically shaded matte materials, warm key light from upper left, cool teal fill, subtle ambient occlusion, legible silhouette at 60 pixels, no outlines, no text, no logo, no watermark. Orthographic camera facing the object from the front, slight view of upper surfaces. Isolated on genuine transparent alpha, no floor, no cast shadow outside the object. Asset type: one 2x2 animation spritesheet, four equal square cells without visible grid, each cell contains the exact SAME friendly compact construction worker, yellow hardhat, orange reflective vest, navy work trousers, chunky dark boots, work gloves, warm expressive face, 3-head-tall proportions. All four full bodies same scale, facing slightly to viewer's right, feet aligned at same baseline, all limbs contained inside each cell, generous 15% empty margins. Top-left: neutral standing with arms relaxed. Top-right: jumping upward, arms slightly raised, knees tucked. Bottom-left: falling, arms out for balance, legs extended. Bottom-right: aiming a small blue cartoon air-blower tool straight up, full body. No extra characters, props, scenery or labels."
+    },
+    {
+      "key": "wood",
+      "file": "wood.png",
+      "prompt": "Use case: stylized-concept. Production sprite for a polished 2D vertical jumping game about housing construction. Cohesive premium toy-like 3D render: softly beveled forms, physically shaded matte materials, warm key light from upper left, cool teal fill, subtle ambient occlusion, legible silhouette at 60 pixels, no outlines, no text, no logo, no watermark. Orthographic camera facing the object from the front, slight view of upper surfaces. Isolated on genuine transparent alpha, no floor, no cast shadow outside the object. Asset type: one wooden scaffold jumping platform, long horizontal plank deck 4.5 times wider than tall overall including support brackets. Front-facing horizontal top edge, no tilt. Thick honey oak boards, visible soft wood grain and rounded end caps, small metal bolts, two short dark steel support brackets under the deck. Silhouette about 85% image width. Deck top at 35% of the object height, visibly thick front face. Single isolated platform."
+    },
+    {
+      "key": "metal",
+      "file": "metal.png",
+      "prompt": "Use case: stylized-concept. Production sprite for a polished 2D vertical jumping game about housing construction. Cohesive premium toy-like 3D render: softly beveled forms, physically shaded matte materials, warm key light from upper left, cool teal fill, subtle ambient occlusion, legible silhouette at 60 pixels, no outlines, no text, no logo, no watermark. Orthographic camera facing the object from the front, slight view of upper surfaces. Isolated on genuine transparent alpha, no floor, no cast shadow outside the object. Asset type: one movable construction scaffold jumping platform, long horizontal deck 4.5 times wider than tall overall. Turquoise painted steel top and thick beveled front face with subtle scratches, silver end caps and rivets, two short dark steel brackets underneath. Horizontal top landing edge, no tilt, no wheels, no crane. Silhouette about 85% image width. Single isolated platform."
+    },
+    {
+      "key": "fragile",
+      "file": "fragile.png",
+      "prompt": "Use case: stylized-concept. Single production game sprite for a 2D vertical jumping construction game. Premium toy-like 3D render, softly beveled forms, realistic but simplified matte materials, warm upper-left key light and cool teal fill, gentle ambient occlusion, clear at 60 pixels. Orthographic front camera, slight view of top surfaces. Genuine transparent alpha background, no floor or ground shadow, no scenery, text, lettering, logos or watermark. Only ONE isolated object with empty padding. One long horizontal honey oak scaffold platform with TWO short dark steel support brackets and small bolts below. A clear jagged crack running across the front face and top at the center; platform still holds together. The crack is a dark split in real thick wood, not drawn symbol. Darker weathered wood than a pristine platform. Front-facing flat horizontal landing edge, no tilt, overall aspect ratio 4.5:1 including brackets."
+    },
+    {
+      "key": "spring",
+      "file": "spring.png",
+      "prompt": "Use case: stylized-concept. Single production game sprite for a 2D vertical jumping construction game. Premium toy-like 3D render, softly beveled forms, realistic but simplified matte materials, warm upper-left key light and cool teal fill, gentle ambient occlusion, clear at 60 pixels. Orthographic front camera, slight view of top surfaces. Genuine transparent alpha background, no floor or ground shadow, no scenery, text, lettering, logos or watermark. Only ONE isolated object with empty padding. One mechanical jumping spring assembly: a yellow-orange rectangular broad flat pressure cap on top, a large shiny steel helical compression spring of FOUR clearly visible rounded coils, bolted blue-grey base plate below. Entire isolated assembly upright, centered, front view. Cap width 1.4 times assembly height, entire top cap fully horizontal, visible beveled thickness, soft reflected highlights. Recognizable real coiled spring, not a zigzag symbol. No surrounding platform."
+    },
+    {
+      "key": "cargo",
+      "file": "cargo.png",
+      "prompt": "Use case: stylized-concept. Single production game sprite for a 2D vertical jumping construction game. Premium toy-like 3D render, softly beveled forms, realistic but simplified matte materials, warm upper-left key light and cool teal fill, gentle ambient occlusion, clear at 60 pixels. Orthographic front camera, slight view of top surfaces. Genuine transparent alpha background, no floor or ground shadow, no scenery, text, lettering, logos or watermark. Only ONE isolated object with empty padding. One compact pallet loaded with orange-red terracotta construction bricks, yellow wooden pallet base, two dark steel straps wrapping around the brick stack, small yellow triangular caution plaque on the front with a simple exclamation symbol. Front view with subtle top/side depth, overall width 1.4 times height. No ropes, no crane, no hooks. This is a hazardous game object, warm rust-red silhouette, compact rectangular form."
+    },
+    {
+      "key": "propeller",
+      "file": "propeller.png",
+      "prompt": "Use case: stylized-concept. A single production sprite for a polished 2D construction jumping game. Premium softly beveled toy-like 3D render, warm upper-left key light, cool teal fill, subtle ambient occlusion, recognizable at 32 pixels. Orthographic front camera, slight top surface visible. Genuine transparent alpha background, no ground, no floor shadow, no text, labels, lettering, logos or watermark. One centered isolated object with 12 percent padding. A yellow construction hardhat with a compact blue electric motor on top, one small metal shaft and a two-blade pale turquoise propeller, thick curved brim, realistic rounded helmet thickness, grey suspension strap under the rim. Entire object including blades visible. No person."
+    },
+    {
+      "key": "jetpack",
+      "file": "jetpack.png",
+      "prompt": "Use case: stylized-concept. A single production sprite for a polished 2D construction jumping game. Premium softly beveled toy-like 3D render, warm upper-left key light, cool teal fill, subtle ambient occlusion, recognizable at 32 pixels. Orthographic front camera, slight top surface visible. Genuine transparent alpha background, no ground, no floor shadow, no text, labels, lettering, logos or watermark. One centered isolated object with 12 percent padding. A compact construction lifting jetpack, two turquoise-painted cylindrical tanks with silver caps, small yellow valves, navy harness straps, short metal exhaust nozzles underneath. A tiny orange pilot flame under each nozzle. Entire object visible, no person."
+    },
+    {
+      "key": "crane",
+      "file": "crane.png",
+      "prompt": "Use case: stylized-concept. A single production sprite for a polished 2D construction jumping game. Premium softly beveled toy-like 3D render, warm upper-left key light, cool teal fill, subtle ambient occlusion, recognizable at 32 pixels. Orthographic front camera, slight top surface visible. Genuine transparent alpha background, no ground, no floor shadow, no text, labels, lettering, logos or watermark. One centered isolated object with 12 percent padding. A single heavy polished steel crane lifting hook with yellow safety latch, attached to a compact yellow-orange pulley block with two silver bolts, short dark cable extending upward. Hook and block together form one vertical lifting assembly, front view, thick rounded metal, entire object visible. No full crane, no load, no person."
+    },
+    {
+      "key": "brick",
+      "file": "brick.png",
+      "prompt": "Use case: stylized-concept. A single production sprite for a polished 2D construction jumping game. Premium softly beveled toy-like 3D render, warm upper-left key light, cool teal fill, subtle ambient occlusion, recognizable at 32 pixels. Orthographic front camera, slight top surface visible. Genuine transparent alpha background, no ground, no floor shadow, no text, labels, lettering, logos or watermark. One centered isolated object with 12 percent padding. A single warm orange-red terracotta hollow construction brick, rounded slightly chipped corners, visible two rectangular holes on its front, top and right face show depth. Long edge horizontal, slight three-quarter view but shallow angle. No pallet, no other bricks, no caution labels."
+    },
+    {
+      "key": "background",
+      "file": "background.png",
+      "prompt": "Use case: stylized-concept. Asset type: portrait background illustration for a polished 2D vertical construction jumping game, aspect 2:3. Premium soft 3D miniature city render, gentle atmospheric depth, muted dusty blue / teal palette, subtle warm dawn light from upper left. Composition: upper 65 percent is calm blue sky with only a few soft wispy clouds and no high contrast details, lower 35 percent a distant modern residential skyline with small apartment blocks and a few construction cranes, buildings soften into blue atmospheric haze, no streets visible. Background must be quiet and low contrast so vivid orange worker and turquoise platforms can read over it. No foreground characters, no foreground platforms or items, no UI, no text, no logos, no watermark. Slight soft gradients, not flat vector art. Keep skyline confined to bottom."
+    }
+  ]
+}

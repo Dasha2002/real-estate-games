@@ -1,7 +1,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const Jump=require('./engine.js');
 const handlers={root:{},window:{},document:{}};
-const node={textContent:'',disabled:false,classList:{add(){},remove(){}},focus(){},setPointerCapture(){}};
+const node={textContent:'',disabled:false,classList:{add(){},remove(){}},focus(){},setPointerCapture(){},setAttribute(){}};
 const overlayClasses=new Set();
 const overlay={innerHTML:'',hidden:false,classList:{add(...names){names.forEach(name=>overlayClasses.add(name))},remove(...names){names.forEach(name=>overlayClasses.delete(name))}}};
 const canvas={...node,width:400,height:640,getContext(){return {setTransform(){}}}};

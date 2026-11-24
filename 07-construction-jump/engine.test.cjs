@@ -28,6 +28,16 @@ for(let seed=1;seed<=30;seed++){
       wrapRoutes.add(item.route);
     }
     assert.ok(state.platforms.length<30&&state.materials.length<18&&state.powerups.length<8,'Offscreen objects are pruned');
+    for(let a=0;a<state.platforms.length;a++){
+      const p=state.platforms[a];assert.equal(p.w,Jump.platformWidth,'All generated platforms have equal width');
+      for(let b=a+1;b<state.platforms.length;b++){
+        const q=state.platforms[b];
+        if(Math.abs(p.y-q.y)<48){
+          const motion=(p.type==='moving'?p.amplitude:0)+(q.type==='moving'?q.amplitude:0);
+          assert.ok(Math.abs(p.anchor-q.anchor)>=(p.w+q.w)/2+12+motion,'Full platform travel envelopes do not overlap');
+        }
+      }
+    }
     if(seed===1)for(const item of state.platforms)if(item.y>=7600&&item.y<8500)latePlatforms.set(item.id,item);
   }
   assert.ok(state.maxHeight>=36000,`Seed ${seed} should remain climbable, reached ${Math.round(state.maxHeight)}`);
