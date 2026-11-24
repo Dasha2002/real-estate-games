@@ -1,0 +1,17 @@
+{
+  "tool": "Built-in image_gen",
+  "assets": [
+    {
+      "file": "assets/images/cover-living-v12.png",
+      "prompt": "Use case: stylized-concept. Asset type: landscape 16:9 website game cover, no text. A polished cozy mobile game illustration about making a dream home through little hands-on tasks. Charming rounded calico cat gardener in a sunny apartment window nook, planting a blooming flower in a terracotta pot; next to it a small beautifully arranged dollhouse apartment model and a few tactile puzzle pieces. Outside the large window a green residential courtyard. Warm cream, sage green, honey and peach palette, soft dimensional cartoon art, clean brown contour lines, subtle texture, believable contact shadows, rich but uncluttered composition. Strong readable main subject at thumbnail size. All objects resting on surfaces. No lettering, numbers, logos or UI."
+    },
+    {
+      "file": "assets/images/cover-courtyard-v12.png",
+      "prompt": "Use case: stylized-concept. Asset type: landscape 16:9 website game cover, no text. A polished cozy mobile game illustration about exploring a friendly residential complex and helping neighbors. Isometric miniature residential neighborhood with varied pastel apartment buildings both in center and background, curving tiled pedestrian paths, leafy birch and fir trees on grass. A friendly rounded calico cat resident waving to a neighbor, a tiny grocery shop with fruit display, basketball court and park bench visible as charming secondary destinations. Warm cream, sage green, honey and peach palette, clean brown contour lines, soft dimensional cartoon art, subtle texture and believable contact shadows. Clear attractive scene at thumbnail size; balanced detail, no crowding. All buildings stand on the ground. No lettering, numbers, logos or UI."
+    },
+    {
+      "file": "assets/images/cover-maze-v12.png",
+      "prompt": "Use case: stylized-concept. Asset type: landscape 16:9 website game cover, no text. A polished cozy mobile game illustration about finding a way home through a courtyard maze and solving little puzzles. A charming rounded calico cat seen from behind at entrance to a winding hedge maze with smooth tiled paths; a welcoming pastel apartment doorway glowing warmly at the far end. A few colorful chunky puzzle pieces and a simple key as subtle themed details beside the entrance. Elevated three-quarter view shows a clear inviting winding route and depth. Warm cream, sage green, honey and peach palette, soft dimensional cartoon art, clean brown contour lines, subtle texture, believable contact shadows. Beautiful uncluttered composition, readable at thumbnail size. No lettering, numbers, logos or UI."
+    }
+  ]
+}

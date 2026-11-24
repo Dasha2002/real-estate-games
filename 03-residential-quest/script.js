@@ -1,16 +1,16 @@
 'use strict';
 (() => {
   const key='horizon-maze-v1',themes=[
-    ['Розовый сад','#efa2ce','#c4e87d','#f1c1e6','#c878b7','garden'],
-    ['Лазурный квартал','#76bde9','#b5e5ed','#79d6ee','#488fc7','city'],
-    ['Солнечные холмы','#f5cd83','#e8e7a3','#a9e2f3','#dba85a','sand'],
-    ['Ледяные дорожки','#9fdcf3','#d9eff9','#87bfee','#71b0d6','ice'],
-    ['Персиковый остров','#f4b39e','#d6e88d','#b2e7ef','#db967f','island'],
-    ['Сиреневая долина','#b6a0e1','#d5c8ee','#b7dbf5','#8874c5','crystal'],
-    ['Мятная роща','#9fd5b3','#cde6a0','#b2e9e7','#72af98','forest'],
-    ['Золотой квартал','#e5c878','#e9e3b7','#e8bde5','#b9a06a','gold'],
-    ['Звёздный парк','#9f98d7','#b6c4e9','#a7bfea','#7b79bb','night'],
-    ['Радужный дом','#df9fd8','#cee998','#9fdef1','#af80ca','rainbow']
+    ['Розовый сад','#e2b1c6','#cbd7aa','#dce6df','#b98aa4','garden'],
+    ['Лазурный квартал','#9cbfd1','#cfdfd9','#c1d8df','#789eb6','city'],
+    ['Солнечные холмы','#e5c69c','#dfdfb6','#d7e7e3','#bd9e78','sand'],
+    ['Ледяные дорожки','#b8d5df','#e1ebea','#bfd3df','#94b4c1','ice'],
+    ['Персиковый остров','#e6c0ac','#d4dcb9','#d0e1df','#c5a18e','island'],
+    ['Сиреневая долина','#c3b5d2','#ded4e4','#d0dfe5','#a194b6','crystal'],
+    ['Мятная роща','#b4ccb8','#d2ddbb','#d1e2d9','#91ad98','forest'],
+    ['Золотой квартал','#dcc593','#e5dfc4','#e4d3db','#bba578','gold'],
+    ['Звёздный парк','#b0adc7','#c8cfdf','#becbdc','#918daa','night'],
+    ['Радужный дом','#d5bbcd','#d6dfbe','#c5dce1','#b09bb7','rainbow']
   ];
   let store;try{store=JSON.parse(localStorage.getItem(key));}catch{}if(!store||!Array.isArray(store.levels)||store.version!==2)store={version:2,current:1,unlocked:Math.max(1,store?.unlocked||1),levels:[]};
   let world,progress,player,canvas,ctx,view={w:0,h:0},textures={},last=0,keys=new Set(),drag=null,near=null,hintUntil=0,largeMap=false,winning=false,zbuffer=[],walkTime=0,frameCount=0,lastSave=0,autoPath=[],facingTarget=null,fov=96,floorCache=null;
@@ -21,7 +21,7 @@
   function roundRect(x,y,w,h,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill();}
   function buildTextures(){
     textures={};const theme=themes[world.level-1];
-    for(const kind of ['wall','side','gate']){const c=document.createElement('canvas');c.width=c.height=192;const t=c.getContext('2d');
+    for(const kind of ['wall','side','gate']){const c=document.createElement('canvas');c.width=c.height=512;const t=c.getContext('2d');t.scale(512/192,512/192);
       function rr(x,y,w,h,r,color){t.fillStyle=color;t.beginPath();t.roundRect(x,y,w,h,r);t.fill();}
       const grad=t.createLinearGradient(0,0,192,192);grad.addColorStop(0,kind==='gate'?'#bba1eb':theme[1]);grad.addColorStop(1,kind==='gate'?'#9777ca':theme[4]);t.fillStyle=grad;t.fillRect(0,0,192,192);
       if(kind==='gate'){for(let x=0;x<192;x+=32)rr(x+2,6,27,182,9,x%64?'#b69ae2':'#c3aceb');rr(0,20,192,13,5,'#ded6f5');rr(0,158,192,13,5,'#8975b7');rr(26,54,140,82,17,'#7599c8');rr(33,60,126,63,13,'#91b5df');t.textAlign='center';t.fillStyle='#fff3bf';t.font='bold 16px Segoe UI';t.fillText('ЗАДАНИЕ',96,83);t.font='32px Segoe UI';t.fillText('✦',96,117);}
@@ -46,7 +46,7 @@
     canvas.onpointerdown=e=>{if(e.button!==0)return;canvas.focus();canvas.setPointerCapture(e.pointerId);drag={x:e.clientX,moved:0};};canvas.onpointermove=e=>{if(!drag||Game.dialog.open)return;const dx=e.clientX-drag.x;drag.moved+=Math.abs(dx);facingTarget=null;player.angle+=dx*.004;drag.x=e.clientX;};canvas.onpointerup=e=>{if(drag&&drag.moved<6){if(near)interact();else stepForward();}drag=null;};canvas.onpointercancel=()=>drag=null;
     document.querySelector('#maze-map').onpointerdown=e=>{const r=e.currentTarget.getBoundingClientRect(),x=Math.floor((e.clientX-r.left)/r.width*world.n),y=Math.floor((e.clientY-r.top)/r.height*world.n);if(progress.visited.includes(y*world.n+x)&&!wall(x,y))walkToCell(x,y);};    updateHud();
   }
-  function resize(){const r=canvas.getBoundingClientRect();view={w:r.width,h:r.height};canvas.width=Math.floor(r.width);canvas.height=Math.floor(r.height);}
+  function resize(){const r=canvas.getBoundingClientRect();view={w:r.width,h:r.height};const dpr=Math.min(2,Math.max(1.5,window.devicePixelRatio||1));view.dpr=dpr;canvas.width=Math.round(r.width*dpr);canvas.height=Math.round(r.height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';floorCache=null;}
   function updateHud(){document.querySelector('#mission-pips').innerHTML=world.gates.map(g=>`<i class="${progress.solved.includes(g.id)?'done':''}">${progress.solved.includes(g.id)?'✓':g.id+1}</i>`).join('');document.querySelector('#maze-objective').textContent='Проходы: '+progress.solved.length+' / 3';}
   function instructions(){Game.modal('Дорога домой','<div class="welcome-cat">'+GameArt.icon('house',3)+'</div><p>Найдите дом в десяти лабиринтах. Решайте головоломки, открывайте проходы и получайте баллы.</p><div class="intro-controls"><span>WASD - идти</span><span>Q / E - повернуть</span><span>Мышь - оглядеться</span><span>Пробел - действие</span></div><button class="btn" data-close>Найти дорогу домой</button>');}
   function resetRun(){store={version:2,current:1,unlocked:1,levels:[]};}
@@ -70,9 +70,9 @@
     for(let i=-1;i<7;i++){const x=((i*250-player.angle*120)%(w+300)+w+300)%(w+300)-150,y=h*.10+(i%3)*34;roundRect(x,y,140,25,20,'#fff5e0cc');roundRect(x+25,y-20,60,40,25,'#fff5e0cc');}
     ctx.fillStyle='#b3c1ec';for(let i=-1;i<9;i++){const x=((i*220-player.angle*80)%(w+260)+w+260)%(w+260)-130,hh=55+(i*23%75);ctx.beginPath();ctx.moveTo(x-100,horizon);ctx.lineTo(x,horizon-hh);ctx.lineTo(x+130,horizon);ctx.fill();ctx.fillStyle=i%2?'#c5daf0':'#b3c1ec';}
     drawFloor(projection,horizon,theme);
-    const strip=Math.max(2,Math.floor(w/500)),dirX=Math.cos(player.angle),dirY=Math.sin(player.angle),planeX=-dirY*Math.tan(fov*Math.PI/360),planeY=dirX*Math.tan(fov*Math.PI/360);zbuffer=[];
-    for(let x=0;x<w;x+=strip){const cameraX=2*x/w-1,rayX=dirX+planeX*cameraX,rayY=dirY+planeY*cameraX;let mx=Math.floor(player.x),my=Math.floor(player.y);const deltaX=Math.abs(1/rayX),deltaY=Math.abs(1/rayY),sx=rayX<0?-1:1,sy=rayY<0?-1:1;let sideX=(rayX<0?player.x-mx:mx+1-player.x)*deltaX,sideY=(rayY<0?player.y-my:my+1-player.y)*deltaY,side=0,kind=0;for(let guard=0;guard<100;guard++){if(sideX<sideY){sideX+=deltaX;mx+=sx;side=0;}else{sideY+=deltaY;my+=sy;side=1;}kind=wall(mx,my);if(kind)break;}
-      const dist=Math.max(.06,side===0?sideX-deltaX:sideY-deltaY),height=projection*.72/dist,top=horizon-height*.52,texture=kind===2?textures.gate:side?textures.side:textures.wall;let hit=side?player.x+dist*rayX:player.y+dist*rayY;hit-=Math.floor(hit);if((!side&&rayX<0)||(side&&rayY>0))hit=1-hit;ctx.drawImage(texture,Math.floor(hit*191),0,1,192,x,top,strip+1,height);const fog=clamp((dist-3)/25,0,.30);if(fog){ctx.fillStyle=`rgba(222,235,255,${fog})`;ctx.fillRect(x,top,strip+1,height);}zbuffer[Math.floor(x/strip)]=dist;
+    const strip=1/(view.dpr||1),dirX=Math.cos(player.angle),dirY=Math.sin(player.angle),planeX=-dirY*Math.tan(fov*Math.PI/360),planeY=dirX*Math.tan(fov*Math.PI/360);zbuffer=[];
+    for(let x=0;x<w;x+=strip){const cameraX=2*(x+strip*.5)/w-1,rayX=dirX+planeX*cameraX,rayY=dirY+planeY*cameraX;let mx=Math.floor(player.x),my=Math.floor(player.y);const deltaX=Math.abs(1/rayX),deltaY=Math.abs(1/rayY),sx=rayX<0?-1:1,sy=rayY<0?-1:1;let sideX=(rayX<0?player.x-mx:mx+1-player.x)*deltaX,sideY=(rayY<0?player.y-my:my+1-player.y)*deltaY,side=0,kind=0;for(let guard=0;guard<100;guard++){if(sideX<sideY){sideX+=deltaX;mx+=sx;side=0;}else{sideY+=deltaY;my+=sy;side=1;}kind=wall(mx,my);if(kind)break;}
+      const dist=Math.max(.06,side===0?sideX-deltaX:sideY-deltaY),height=projection*.72/dist,top=horizon-height*.52,texture=kind===2?textures.gate:side?textures.side:textures.wall;let hit=side?player.x+dist*rayX:player.y+dist*rayY;hit-=Math.floor(hit);if((!side&&rayX<0)||(side&&rayY>0))hit=1-hit;ctx.drawImage(texture,Math.min(texture.width-2,hit*(texture.width-1)),0,1.5,texture.height,x,top,strip+.025,height);const fog=clamp((dist-3)/25,0,.30);if(fog){ctx.fillStyle=`rgba(222,235,255,${fog})`;ctx.fillRect(x,top,strip+.025,height);}zbuffer[Math.floor(x/strip)]=dist;
     }
     // The destination is a freestanding illuminated entrance, occluded by walls.
     drawHome(projection,horizon,strip);
@@ -80,9 +80,9 @@
     drawMap();
   }
   function drawFloor(projection,horizon,theme){
-    const w=view.w,h=view.h,scale=3,cw=Math.ceil(w/scale),ch=Math.ceil((h-horizon)/scale),stamp=[cw,ch,world.level,fov,player.x.toFixed(3),player.y.toFixed(3),player.angle.toFixed(3)].join(':');
+    const w=view.w,h=view.h,scale=1,cw=Math.ceil(w/scale),ch=Math.ceil((h-horizon)/scale),stamp=[cw,ch,world.level,fov,player.x.toFixed(3),player.y.toFixed(3),player.angle.toFixed(3)].join(':');
     if(!floorCache||floorCache.stamp!==stamp){const c=floorCache?.canvas||document.createElement('canvas');c.width=cw;c.height=ch;const g=c.getContext('2d'),im=g.createImageData(cw,ch),hex=theme[2].slice(1),base=[0,2,4].map(i=>parseInt(hex.slice(i,i+2),16)),dx=Math.cos(player.angle),dy=Math.sin(player.angle),plane=Math.tan(fov*Math.PI/360);
-      for(let y=0;y<ch;y++){const dist=.36*projection/Math.max(1,y*scale+scale/2),fog=Math.min(.48,dist/35);for(let x=0;x<cw;x++){const side=2*(x+.5)/cw-1,wx=(player.x+dist*(dx-dy*plane*side))*2,wy=(player.y+dist*(dy+dx*plane*side))*2,fx=wx-Math.floor(wx),fy=wy-Math.floor(wy),joint=fx<.035||fy<.035,checker=(Math.floor(wx)+Math.floor(wy))&1,shade=joint?.77:checker?.97:1.08,i=(y*cw+x)*4;for(let k=0;k<3;k++)im.data[i+k]=Math.min(255,base[k]*shade*(1-fog)+[221,233,240][k]*fog);im.data[i+3]=255;}}g.putImageData(im,0,0);floorCache={canvas:c,stamp};}
+      for(let y=0;y<ch;y++){const dist=.36*projection/Math.max(1,y*scale+scale/2),fog=Math.min(.48,dist/35);for(let x=0;x<cw;x++){const side=2*(x+.5)/cw-1,wx=(player.x+dist*(dx-dy*plane*side))*2,wy=(player.y+dist*(dy+dx*plane*side))*2,fx=wx-Math.floor(wx),fy=wy-Math.floor(wy),edge=Math.min(fx,1-fx,fy,1-fy),joint=Math.max(0,1-edge/.035)*Math.max(0,1-dist/20),checker=(Math.floor(wx)+Math.floor(wy))&1,shade=(checker?.98:1.04)*(1-joint*.16),i=(y*cw+x)*4;for(let k=0;k<3;k++)im.data[i+k]=Math.min(255,base[k]*shade*(1-fog)+[221,233,240][k]*fog);im.data[i+3]=255;}}g.putImageData(im,0,0);floorCache={canvas:c,stamp};}
     ctx.imageSmoothingEnabled=true;ctx.drawImage(floorCache.canvas,0,horizon,w,h-horizon);ctx.imageSmoothingEnabled=true;
   }
   function drawHome(projection,horizon,strip){const dx=world.goal.x+.5-player.x,dy=world.goal.y+.5-player.y,forward=dx*Math.cos(player.angle)+dy*Math.sin(player.angle),side=-dx*Math.sin(player.angle)+dy*Math.cos(player.angle);if(forward<=.1)return;const sx=view.w/2+side/forward*projection,hh=projection/forward*.9,ww=hh*.6,top=horizon-hh*.5;if(sx<-ww||sx>view.w+ww)return;const center=Math.floor(sx/strip);if(zbuffer[center]&&zbuffer[center]<forward-.3)return;roundRect(sx-ww/2-6,top-6,ww+12,hh+12,7,'#fff0bf');roundRect(sx-ww/2,top,ww,hh,5,'#9b83d6');ctx.fillStyle='#c5f1fa';ctx.fillRect(sx-ww*.36,top+hh*.1,ww*.72,hh*.5);ctx.fillStyle='#f5d890';ctx.beginPath();ctx.arc(sx+ww*.28,top+hh*.7,Math.max(2,ww*.03),0,7);ctx.fill();ctx.fillStyle='#fff6cd';ctx.textAlign='center';ctx.font=`bold ${clamp(hh*.12,10,40)}px Segoe UI`;ctx.fillText('ДОМ',sx,top-hh*.08);}

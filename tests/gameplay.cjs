@@ -11,24 +11,25 @@ wallet.award('wrong',0);assert.equal(wallet.award('wrong',40),0);assert.equal(wa
 assert.equal(wallet.day(new Date(2026,10,19)),'2026-11-19');
 vm.runInContext(fs.readFileSync('assets/js/town-core.js','utf8')+';this.townCore=TownCore;',env);
 let source=fs.readFileSync('02-find-advantages/script.js','utf8');
-source=source.slice(0,source.indexOf('  load();mount();daily();'))+`this.park={setup(day,open=[]){state={day,open,completed:[],talked:[]};player=center(24,27);generate();},get objects(){return objects},get trees(){return trees},get gates(){return gates},get blocked(){return blocked},route,center,onGrass,treeOnGrass,objectAt,interactionRoute,awardMission,get completed(){return state.completed}};})();`;
+source=source.slice(0,source.indexOf('  load();mount();daily();'))+`this.park={setup(day,open=[]){state={day,open,completed:[],talked:[]};player=center(24,27);generate();},get objects(){return objects},get trees(){return trees},get gates(){return gates},get blocked(){return blocked},route,center,onGrass,treeOnGrass,objectAt,interactionRoute,awardMission,talk,get completed(){return state.completed}};})();`;
 vm.runInContext(source,env,{timeout:3000});
 const park=env.park;const treeCounts=[];
 for(let day=1;day<=90;day++){
   const date=wallet.day(new Date(2026,9,day));
-  park.setup(date);assert.equal(park.objects.length,28);treeCounts.push(park.trees.length);
+  park.setup(date);assert.equal(park.objects.length,27);treeCounts.push(park.trees.length);
   if(day===1)for(const o of park.objects){const path=park.interactionRoute(o);assert.ok(path);const end=path.at(-1)||park.center(24,27);assert.equal(Math.round(Math.hypot(end.x-o.x,end.y-o.y)),68,'Interactions stop beside the place or neighbor');}
   for(const [x,y,w,h] of env.townCore.buildings)for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++)assert.ok(park.blocked.has(yy*72+xx),'Building footprints stay solid');
-  for(const o of park.objects)assert.equal(park.objectAt({x:o.x,y:o.y-(o.kind==='neighbor'?82:125)+12})?.id,o.id,'Visible signs are interactive');
+  for(const o of park.objects){assert.equal(park.objectAt({x:o.x,y:o.y-(o.kind==='neighbor'?82:125)+12})?.id,o.id,'Visible signs are interactive');assert.equal(park.objectAt({x:o.x,y:o.y-(o.kind==='neighbor'?82:125)-19})?.id,o.id,'Interaction badges are clickable');}
   for(const t of park.trees)assert.ok(park.onGrass(t.x,t.y,35),'Trees only on grass');
   for(const t of park.trees)assert.ok(park.treeOnGrass(t),'Canopies do not cover paths or playgrounds');
+  for(let i=0;i<park.trees.length;i++)for(let j=i+1;j<park.trees.length;j++){const a=park.trees[i],b=park.trees[j];assert.ok(a.x+a.size*1.3<=b.x-b.size*1.3||b.x+b.size*1.3<=a.x-a.size*1.3||a.y+18<=b.y-b.size*3.2||b.y+18<=a.y-a.size*3.2,'Actual tree canopy bounds never overlap');}
   for(const t of park.objects.filter(o=>o.type==='tree'))assert.ok(park.onGrass(t.x,t.y,35),'Collectible trees only on grass');
   const before=JSON.stringify(park.objects);park.setup(date);assert.equal(JSON.stringify(park.objects),before);
   for(const o of park.objects)assert.ok(park.route(o),'All public places and neighbors reachable '+date+' '+o.id);
 }
 park.setup('2026-11-19');const today=JSON.stringify(park.trees);park.setup('2026-11-20');assert.notEqual(JSON.stringify(park.trees),today);
 console.log('Trees per courtyard:',Math.min(...treeCounts),'-',Math.max(...treeCounts));
-console.log('PASS: wallet deduplication, zero-score claims, spending, local dates; 90 daily maps, deterministic layouts, 2,520 reachable places and neighbors; trees and canopies stay on grass.');
+console.log('PASS: wallet deduplication, zero-score claims, spending, local dates; 90 daily maps, deterministic layouts, 2,430 reachable places and neighbors; trees and canopies stay on grass.');
 
 vm.runInContext(fs.readFileSync('assets/js/maze-core.js','utf8')+'\nthis.mazes=MazeWorld;',env);
 const mazes=env.mazes;let previousSize=0,previousPath=0;const taskKinds=new Set();
@@ -62,7 +63,7 @@ for(let seed=1;seed<=12;seed++)for(let wave=0;wave<9;wave++){
   const b=[...p.board];p.solution.forEach((row,dy)=>row.forEach((v,dx)=>{if(v)b[(y+dy)*8+p.gap+dx]=1;}));
   assert.ok(b.slice((12-p.solution.length)*8).every(Boolean),'Every block layout is solvable by a drop');
 }
-for(const kind of taskKinds)assert.ok(env.minis.names[kind],'Registered activity '+kind);assert.equal(Object.keys(env.minis.names).length,33);console.log('PASS: ten growing mazes; 30 unique activities; 108 solvable block layouts; placement and puzzle checks.');
+for(const kind of taskKinds)assert.ok(env.minis.names[kind],'Registered activity '+kind);assert.equal(Object.keys(env.minis.names).length,32);console.log('PASS: ten growing mazes; 30 unique activities; 108 solvable block layouts; placement and puzzle checks.');
 
 for(let seed=1;seed<=160;seed++){
   const c=env.variants.build('shopping',seed,1+seed%10,'ice');
@@ -84,6 +85,7 @@ console.log('PASS: 160 random scenarios: reachable parking/aquarium, solvable ci
 env.document.querySelector=()=>node;
 let quizSource=fs.readFileSync('01-interactive-quiz/script.js','utf8');
 quizSource=quizSource.slice(0,quizSource.indexOf('  load();render();'))+`this.living={load,complete,skip,get missions(){return missions},reset(){state=fresh();},get results(){return state.results}};})();`;
+env.minis.patch=(element,html)=>element.innerHTML=html;
 vm.runInContext(quizSource,env);const living=env.living;living.load();
 assert.equal(living.missions.length,9);const initial=wallet.read().balance;
 assert.equal(new Set(living.missions.map(m=>m.type)).size,9,'Each level has three distinct tasks; no mechanic repeats');
@@ -95,9 +97,10 @@ assert.equal(wallet.read().balance,initial+420,'Replay only pays for previously 
 console.log('PASS: nine quiz stages; skip earns zero, rewards 20/40/80, duplicate callbacks and replays cannot double-pay.');
 
 // The courtyard uses the same one-claim-per-place and daily reward rules.
-const townBalance=wallet.read().balance;park.setup('2090-01-01');for(const id of env.townCore.missions.map(m=>m.id)){park.awardMission(id);park.awardMission(id);}assert.equal(wallet.read().balance,townBalance+1240);assert.equal(park.completed.length,24);
-park.setup('2090-01-01');for(const id of env.townCore.missions.map(m=>m.id))park.awardMission(id);assert.equal(wallet.read().balance,townBalance+1240,'Daily reload cannot pay twice');
-park.setup('2090-01-02');for(const id of env.townCore.missions.map(m=>m.id))park.awardMission(id);assert.equal(wallet.read().balance,townBalance+2480,'New day unlocks new courtyard rewards');console.log('PASS: 24 courtyard missions and completion bonus (1240/day), duplicate claims, reloads and next-day rewards.');
+const townBalance=wallet.read().balance;park.setup('2090-01-01');for(const id of env.townCore.missions.map(m=>m.id)){park.awardMission(id);park.awardMission(id);}assert.equal(wallet.read().balance,townBalance+1200);assert.equal(park.completed.length,23);
+park.setup('2090-01-01');for(const id of env.townCore.missions.map(m=>m.id))park.awardMission(id);assert.equal(wallet.read().balance,townBalance+1200,'Daily reload cannot pay twice');
+park.setup('2090-01-02');for(const id of env.townCore.missions.map(m=>m.id))park.awardMission(id);assert.equal(wallet.read().balance,townBalance+2400,'New day unlocks new courtyard rewards');console.log('PASS: 23 courtyard missions and completion bonus (1200/day), duplicate claims, reloads and next-day rewards.');
+park.setup('2090-01-03');const dialogueBalance=wallet.read().balance;for(const n of env.townCore.neighbors){park.talk(n,'start');park.talk(n,'start');assert.equal(wallet.read().balance,dialogueBalance+env.townCore.neighbors.indexOf(n)*20,'Opening a conversation cannot immediately pay');for(const topic of Object.keys(env.townCore.dialogues[n.id]))park.talk(n,topic);}assert.equal(wallet.read().balance,dialogueBalance+120,'Four full conversations pay 80 plus 40 for all neighbors');for(const n of env.townCore.neighbors)for(const topic of Object.keys(env.townCore.dialogues[n.id]))park.talk(n,topic);assert.equal(wallet.read().balance,dialogueBalance+120,'Reopening read conversations cannot pay twice');console.log('PASS: complete conversation rewards, incomplete topic guards and repeated reads.');
 
 // Test the actual first-person game's task/finish payout callbacks at all levels.
 let activity;env.minis.open=options=>activity=options;node.focus=()=>{};env.Game.modal=()=>{};
