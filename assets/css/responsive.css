@@ -1,0 +1,154 @@
+/* Keep controls readable before the final viewport fitting step. */
+.mini-dialog #mini-stage{min-width:0}
+.mini-dialog .mini-footer #mini-status,.mini-dialog .mini-footer #mini-status:empty{display:block;min-height:2.6em;line-height:1.3}
+.mini-dialog .waste-piece,.mini-dialog .sort-bins{user-select:none;-webkit-user-select:none}
+.mini-dialog .dialog-top h2{min-width:0;overflow-wrap:anywhere}
+.mini-dialog .dialog-top .icon-btn,.mini-dialog .mini-prize{flex-shrink:0}
+.mini-dialog .water-lab{gap:16px}
+.living-screen .toy-building{border-radius:15px 15px 9px 9px;border-width:2px;box-shadow:8px 8px 0 #a7866a80,0 10px 22px #796b4e12}
+.living-screen .toy-window{border-radius:8px;border-width:1.5px;box-shadow:inset 2px 2px #edf0d6}
+.living-screen .toy-roof{border-radius:10px 10px 5px 5px}
+.mini-dialog .tool-card,.mini-dialog .inventory-piece{border-radius:17px}
+.mini-dialog .number-cell,.mini-dialog .memory-card{border-radius:16px}
+.mini-dialog .sort-bin .toy-icon{filter:drop-shadow(0 4px 3px #78644d24)}
+.park-touch-controls,.park-interact,.park-journal-toggle{display:none}
+.park-interact[hidden]{display:none!important}
+@media(max-width:360px){
+  .playbar{gap:6px;padding-left:8px;padding-right:8px}
+  .playbar .play-home{font-size:.7rem;white-space:nowrap}
+  .playbar [data-rules]{font-size:.66rem;white-space:nowrap;padding:7px;min-height:38px}
+  .playbar .wallet-button{font-size:.68rem;gap:6px;padding:7px;white-space:nowrap;min-height:38px}
+  .playbar [data-balance]{white-space:nowrap}
+}
+@media(max-width:600px),(pointer:coarse) and (max-width:1000px),(max-width:1000px) and (max-height:500px){
+  .park-shell{position:relative;display:block}
+  .park-stage{height:100%}
+  .park-sidebar{position:absolute;z-index:5;left:0;right:0;bottom:0;height:64px;padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:content-box;display:block;border:0;border-top:2px solid #c9ba9d;border-radius:22px 22px 0 0;box-shadow:0 -6px 24px #65584314;background:#faf1de;overflow:hidden}
+  .park-sidebar .town-panel-heading{height:64px;padding:10px 12px;display:flex;align-items:center;gap:8px;box-sizing:border-box}
+  .park-sidebar .town-panel-heading>div{margin-right:auto}
+  .park-sidebar .town-panel-heading p{display:none}
+  .park-sidebar .town-panel-heading h1{font-size:.9rem;white-space:nowrap}
+  .park-sidebar .park-avatar-button{font-size:.7rem;min-height:38px;border-radius:14px;margin:0;padding:7px 10px}
+  .park-journal-toggle{display:block;min-height:38px;padding:7px 11px;border:1px solid #b8c49e;border-radius:14px;background:#e5ebd1;color:#647752;font-size:.72rem;font-weight:750;white-space:nowrap;box-shadow:0 3px 0 #bbc8a04d}
+  .park-sidebar:not(.expanded) .neighbor-list,.park-sidebar:not(.expanded) .park-journal{display:none}
+  .park-sidebar .park-stats,.park-sidebar>progress,.park-sidebar .park-sidebar-bottom{display:none}
+  .park-sidebar.expanded{height:min(340px,46%);display:grid;grid-template-columns:1fr;grid-template-rows:64px 56px minmax(0,1fr);gap:4px}
+  .park-sidebar.expanded .neighbor-list{grid-column:1;grid-row:2;display:flex;justify-content:space-around;gap:8px;padding:0 12px}
+  .park-sidebar.expanded .neighbor-chip{flex:1;min-width:0;flex-direction:column;gap:0}
+  .park-sidebar.expanded .neighbor-chip>span{width:30px;height:32px}
+  .park-sidebar.expanded .neighbor-chip b{font-size:.65rem}
+  .park-sidebar.expanded .park-journal{grid-column:1;grid-row:3;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;overflow:auto;padding:7px 12px 14px}
+  .park-sidebar.expanded .town-mission{min-height:60px;flex:none;margin:0;padding:8px;grid-template-columns:16px 1fr;border-radius:16px}
+  .park-sidebar.expanded .town-mission>b{font-size:.69rem}
+  .park-sidebar.expanded .town-mission strong{font-size:.64rem}
+  .park-touch-controls{position:absolute;z-index:3;left:max(14px,env(safe-area-inset-left,0px));bottom:calc(84px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px);gap:4px;touch-action:none;user-select:none}
+  .park-touch-controls button{width:44px;height:44px;min-height:44px;padding:0;display:grid;place-items:center;background:#fff6e6e8;border:2px solid #c8b795;color:#7f8f68;border-radius:16px;box-shadow:0 4px 0 #96876955;font-size:1.1rem;touch-action:none;-webkit-tap-highlight-color:transparent;backdrop-filter:blur(8px)}
+  .park-touch-controls button.pressed{background:#dce7bf;color:#5d744f;transform:translateY(3px);box-shadow:0 1px 0 #96876955}
+  .walk-up{grid-column:2;grid-row:1}.walk-left{grid-column:1;grid-row:2}.walk-right{grid-column:3;grid-row:2}.walk-down{grid-column:2;grid-row:3}.walk-center{grid-column:2;grid-row:2;display:grid;place-items:center;color:#8c9e6c;font-size:1.2rem;pointer-events:none}
+  .park-interact{display:block;position:absolute;z-index:3;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(105px + env(safe-area-inset-bottom,0px));min-height:46px;max-width:145px;padding:10px 16px;background:#8fa37c;color:#fff9e7;border:2px solid #d4dfbb;border-radius:18px;box-shadow:0 4px 0 #65785866;font-size:.82rem;font-weight:750;touch-action:manipulation}
+  .park-minimap{bottom:calc(173px + env(safe-area-inset-bottom,0px));right:12px;transform:scale(.49);pointer-events:auto;border-radius:18px;opacity:.85}
+  #park-notice{bottom:calc(245px + env(safe-area-inset-bottom,0px));max-width:calc(100% - 28px);font-size:.78rem;pointer-events:none}
+  .park-location{max-width:calc(100% - 75px);font-size:.72rem;border-radius:15px}
+}
+@media(max-height:500px) and (pointer:coarse), (max-height:500px) and (max-width:1000px){
+  .park-touch-controls{bottom:76px;grid-template-columns:repeat(3,40px);grid-template-rows:repeat(3,40px);gap:3px}
+  .park-touch-controls button{width:40px;height:40px;min-height:40px;border-radius:14px}
+  .park-minimap{bottom:110px;transform:scale(.4)}
+  .park-interact{bottom:79px}
+  .park-sidebar.expanded{height:calc(100% - 12px)}
+  .park-sidebar.expanded .park-journal{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:600px){
+  .mini-dialog .water-lab{display:grid;grid-template-columns:repeat(var(--tube-cols,3),max-content);gap:18px 20px;padding:18px 12px}
+  .mini-dialog .water-tube{width:46px;height:145px}
+  .mini-dialog .tube-glass{width:42px;height:128px}
+  .mini-dialog .water-tube.selected{transform:translateY(-10px) rotate(-5deg)}
+  .mini-dialog .water-tube.pouring{transform:translateY(-14px) rotate(20deg)}
+  .mini-dialog .catch-list-item{min-width:0;flex:1 1 40%}
+  .mini-dialog .catch-list-item>b{overflow-wrap:anywhere}
+  .mini-dialog .catch-receipt{font-size:.85rem}
+  .mini-dialog .basket-hud{gap:6px 12px}
+  .mini-dialog .parking-arena{transform:none;box-sizing:border-box}
+  .mini-dialog .plant-scene:has(.toy-pot:nth-child(4)){height:430px}
+  .mini-dialog .plant-pots:has(.toy-pot:nth-child(4)){row-gap:130px;left:15%;right:3%}
+  .mini-dialog .plant-pots:has(.toy-pot:nth-child(4)) .pot-notice{bottom:calc(100% + 85px)!important;width:90px}
+  .mini-dialog .drag-yard .litter{width:44px;height:44px}
+  .mini-dialog .mini-footer #mini-status{flex-basis:100%;font-size:.8rem;line-height:1.3}
+  .park-journal{overscroll-behavior-x:contain;scroll-snap-type:x proximity}
+  .park-journal>button{scroll-snap-align:start}
+}
+@media(max-height:520px) and (min-width:601px){
+  .mini-dialog .dialog-inner{padding:10px 16px;gap:6px}
+  .mini-dialog .dialog-top h2{font-size:1.15rem}
+  .mini-dialog #mini-stage{gap:6px}
+  .mini-dialog .arcade-topline{padding:6px 10px}
+  .mini-dialog .water-lab{min-height:0;padding:12px;gap:18px}
+  .mini-dialog .water-tube{width:52px;height:126px}
+  .mini-dialog .tube-glass{width:48px;height:113px}
+  .mini-dialog .water-tube.selected{transform:translateY(-8px) rotate(-5deg)}
+  .mini-dialog .water-tube.pouring{transform:translateY(-10px) rotate(20deg)}
+  .mini-dialog .mini-footer{padding-top:6px}
+  .mini-dialog .basket-court{width:min(100%,430px)}
+  .mini-dialog .catch-shop{width:min(100%,400px)}
+  .mini-dialog .catch-receipt{padding:6px 10px}
+  .mini-dialog .catch-receipt>b{margin-bottom:3px}
+  .mini-dialog #catch-list{gap:5px;margin-bottom:3px}
+  .mini-dialog .catch-list-item{padding:2px 5px;grid-template-columns:25px auto}
+  .mini-dialog .catch-list-item>.toy-icon{width:24px;height:27px}
+  .mini-dialog .catch-list-item>b{font-size:.72rem}
+  .mini-dialog .catch-list-item>small{font-size:.64rem}
+  .mini-dialog[data-activity=parking] #mini-stage{display:grid;grid-template-columns:minmax(0,1fr) 220px;align-items:center;gap:6px 16px}
+  .mini-dialog[data-activity=parking] .parking-arena{grid-column:1;grid-row:1/5;width:min(100%,350px);transform:none;box-sizing:border-box}
+  .mini-dialog[data-activity=parking] .mini-help,.mini-dialog[data-activity=parking] .activity-counter,.mini-dialog[data-activity=parking] .mini-tools{grid-column:2}
+  .mini-dialog[data-activity=parking] .mini-tools{gap:5px}
+  .mini-dialog[data-activity=parking] .mini-tools button{min-height:38px;padding:7px 10px}
+  .mini-dialog[data-activity=football] #mini-stage,.mini-dialog[data-activity=shopping] #mini-stage{display:grid;grid-template-columns:220px minmax(0,1fr);align-items:center;gap:8px 16px}
+  .mini-dialog[data-activity=football] .basket-court,.mini-dialog[data-activity=shopping] .catch-shop{grid-column:2;grid-row:1/5;width:min(100%,440px)}
+  .mini-dialog[data-activity=football] .mini-help,.mini-dialog[data-activity=football] .basket-hud,.mini-dialog[data-activity=football] .arcade-actions,.mini-dialog[data-activity=shopping] .mini-help,.mini-dialog[data-activity=shopping] .catch-receipt,.mini-dialog[data-activity=shopping] .arcade-actions{grid-column:1}
+  .mini-dialog[data-activity=shopping] #catch-list{display:grid;grid-template-columns:1fr 1fr}
+  .mini-dialog[data-activity=shopping] .catch-list-item{display:flex;flex-wrap:wrap;gap:2px;font-size:.7rem}
+  .mini-dialog[data-activity=shopping] .catch-list-item>.toy-icon{width:22px;height:24px}
+  .mini-dialog[data-activity=shopping] .catch-list-item>small{display:none}
+  .mini-dialog[data-activity=shopping] .catch-list-item>b{font-size:.68rem}
+  .mini-dialog[data-activity=shopping] .catch-receipt{font-size:.8rem}
+  .mini-dialog[data-activity=shopping] .arcade-actions{gap:5px}
+  .mini-dialog[data-activity=shopping] .arcade-control{font-size:.75rem;min-height:34px;padding:6px}
+  .mini-dialog #mini-stage>.mini-win{grid-column:1/-1;grid-row:auto}
+  .mini-dialog[data-activity=plant] #mini-stage{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:8px 18px;align-items:center}
+  .mini-dialog[data-activity=plant] .plant-scene{grid-column:1;grid-row:1/4;height:270px}
+  .mini-dialog[data-activity=plant] .mini-help,.mini-dialog[data-activity=plant] .mini-tools,.mini-dialog[data-activity=plant] .plant-settings{grid-column:2}
+  .mini-dialog[data-activity=plant] .plant-pots{left:5%;right:3%;gap:12px;justify-content:space-around;bottom:20px}
+  .mini-dialog[data-activity=plant] .toy-pot{width:64px;height:80px}
+  .mini-dialog[data-activity=plant] .pot-notice{width:98px;font-size:.78rem}
+  .mini-dialog[data-activity=plant] .plant-worker{left:0;width:50px;bottom:15px}
+  .mini-dialog[data-activity=plant] .plant-settings{font-size:.8rem}
+  .living-screen{display:grid;grid-template-columns:minmax(190px,30%) minmax(0,1fr);grid-template-rows:auto 1fr;align-items:start;gap:12px 20px;padding:16px;overflow:auto}
+  .living-hud{grid-column:1;grid-row:1;padding:0;min-width:0}
+  .living-hud h1{font-size:1.2rem}
+  .living-hud .living-score{display:none}
+  .living-levels{grid-column:1;grid-row:2;display:grid;width:auto;margin:0;gap:8px}
+  .living-question{grid-column:2;grid-row:1/3;position:relative;inset:auto;width:auto;margin:0;padding:15px}
+  .living-question .question-heading h2{font-size:1.2rem}
+  .living-question .question-note{margin-bottom:8px}
+  .living-question .living-choices{gap:8px}
+  .living-mission-row .living-choice{min-height:50px;padding:8px}
+  .living-question .question-bottom{margin-top:10px}
+  .park-shell{grid-template-columns:minmax(0,1fr) 240px;grid-template-rows:minmax(0,1fr)}
+  .park-sidebar .town-panel-heading{padding:9px 12px;gap:6px}
+  .park-sidebar .town-panel-heading h1{font-size:1.1rem}
+  .park-sidebar .park-stats{padding:5px 12px;gap:12px}
+  .park-sidebar .park-stats b{font-size:1rem}
+  .park-sidebar .neighbor-list{padding:5px 9px;gap:5px}
+  .park-sidebar .park-sidebar-bottom{padding:5px 10px 10px}
+  .park-minimap{transform:scale(.55)}
+  .maze-hud{top:10px;left:12px;right:12px}
+  .maze-level-card{padding:8px 12px}
+  .maze-level-card h1{font-size:1.1rem;margin:3px 0}
+  .maze-mission{top:100px;left:12px;padding:7px 10px}
+  .maze-compass{display:none}
+  .maze-map{top:73px;right:12px;width:100px}
+  .maze-controls{bottom:50px;left:12px;gap:4px}
+  .maze-controls button{height:38px;width:42px}
+  .maze-controls>div{gap:4px}
+  .maze-interaction{bottom:50px;right:12px;left:auto;transform:none;width:min(260px,38%)}
+}

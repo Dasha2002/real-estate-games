@@ -1,6 +1,6 @@
 'use strict';
 const MazeWorld = (() => {
-  const taskTypes=['math','memory','route','sort','pipes','puzzle','blocks','balance','clean','colors','clock','bridge','rhythm','circuit','wind','constellation','shopping','delivery','plant','silhouette','safe','aquarium','stack','solar','order','services','mosaic','furniture','differences','signal'];
+  const taskTypes=['math','memory','route','sort','pipes','puzzle','blocks','balance','clean','colors','clock','football','rhythm','circuit','wind','constellation','shopping','delivery','plant','silhouette','safe','aquarium','stack','solar','order','services','mosaic','furniture','differences','signal'];
   function random(seed){return ()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};}
   function solve(grid,start,goal,closed=new Set()){
     const n=grid.length,idx=(x,y)=>y*n+x,begin=idx(start.x,start.y),end=idx(goal.x,goal.y),queue=[begin],prev=new Map([[begin,-1]]);let head=0;
