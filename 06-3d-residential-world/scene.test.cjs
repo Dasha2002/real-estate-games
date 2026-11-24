@@ -28,8 +28,8 @@ test('Perspective renderer draws empty/full pickups on both planes with a bounde
   const sceneAPI=vm.runInContext('MoveInScene',c),state=A.create();
   const canvas={clientWidth:1920,clientHeight:1080,getContext:()=>ctx};
   const scene=sceneAPI.mount(canvas,()=>state);
-  for(const lane of ['blue','brown'])for(const count of [0,8]){
-    state.lane=lane;state.cargo=Array.from({length:count},(_,i)=>({lane:i%2?'blue':'brown',shape:'corner'}));
+  for(const lane of ['blue','brown'])for(const count of [0,A.capacity]){
+    state.lane=lane;state.cargo=Array.from({length:count},(_,i)=>({lane:i%2?'blue':'brown',shape:'single'}));
     state.falling=[{type:'material',lane,shape:'wide',x:.2,progress:.5},{type:'hazard',lane,shape:'single',x:.8,progress:.9}];
     assert.doesNotThrow(()=>scene.draw(state));
   }
@@ -39,7 +39,7 @@ test('Perspective renderer draws empty/full pickups on both planes with a bounde
 
 test('Bomb impact draws a brief flash and rising smoke, then expires',()=>{
   let arcs=0;
-  const ctx=new Proxy({}, {get:(o,k)=>k==='arc'?()=>{arcs++;}:k in o?o[k]:()=>{}});
+  const ctx=new Proxy({}, {get:(o,k)=>k==='arc'?()=>{arcs++;}:['createLinearGradient','createRadialGradient'].includes(k)?()=>({addColorStop(){}}):k in o?o[k]:()=>{}});
   const c=vm.createContext({MoveInArcade:A,ResizeObserver:class{observe(){} disconnect(){}},devicePixelRatio:1});
   vm.runInContext(fs.readFileSync(path.join(__dirname,'scene.js'),'utf8'),c);
   const state=A.create(),canvas={clientWidth:1000,clientHeight:680,getContext:()=>ctx};

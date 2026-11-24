@@ -27,8 +27,8 @@ function restart(){
   root.innerHTML=`<div class="jump-layout">
     <section class="jump-card" aria-label="На высоту">
       <div class="jump-hud"><div><span>Этаж</span><strong id="floor-count">0</strong></div><div><span>Материалы</span><strong id="material-count">0</strong></div><div><span>Очки</span><strong id="score-count">0</strong></div><button type="button" class="jump-pause" data-action="pause" id="pause-button" aria-label="Пауза" disabled>Ⅱ</button></div>
-      <div class="jump-screen"><canvas tabindex="0" aria-label="Инни поднимается по строительным лесам. Стрелки влево и вправо или A и D управляют движением. На телефоне удерживайте кнопки под игрой."></canvas><div class="jump-overlay" id="jump-overlay"></div></div>
-      <div class="jump-controls" role="group" aria-label="Управление Инни"><button class="jump-drive" data-drive="-1" type="button" aria-label="Двигаться влево">←</button><button class="jump-fire" data-action="shoot" data-shoot type="button" aria-label="Стрелять вверх. Пробел на клавиатуре.">↑ Огонь</button><button class="jump-drive" data-drive="1" type="button" aria-label="Двигаться вправо">→</button></div>
+      <div class="jump-screen"><canvas tabindex="0" aria-label="Строитель поднимается по строительным лесам. Стрелки влево и вправо или A и D управляют движением. На телефоне удерживайте кнопки под игрой."></canvas><div class="jump-overlay" id="jump-overlay"></div></div>
+      <div class="jump-controls" role="group" aria-label="Управление строителем"><button class="jump-drive" data-drive="-1" type="button" aria-label="Двигаться влево">←</button><button class="jump-fire" data-action="shoot" data-shoot type="button" aria-label="Стрелять вверх. Пробел на клавиатуре.">↑ Огонь</button><button class="jump-drive" data-drive="1" type="button" aria-label="Двигаться вправо">→</button></div>
     </section>
     <p class="visually-hidden" id="jump-status" role="status" aria-live="polite"></p>
 
@@ -39,12 +39,12 @@ function showOverlay(){
   const overlay=root.querySelector('#jump-overlay');overlay.hidden=state.phase==='running';
   overlay.classList.remove('is-ending','is-result');
   if(state.phase==='failed')overlay.classList.add('is-result');
-  if(state.phase==='ready')overlay.innerHTML=`<div class="jump-dialog"><span class="jump-portrait" aria-hidden="true"></span><span class="jump-kicker">ИННИ НА ВЫСОТЕ</span><h2>ВЫШЕ С ИННИ</h2><p>Прыгайте по лесам и собирайте материалы. С каждым этажом путь становится сложнее.</p>${action('Начать подъём','start','','btn')}<small>Стрелки / A D · на телефоне — кнопки или касание экрана</small></div>`;
+  if(state.phase==='ready')overlay.innerHTML=`<div class="jump-dialog"><span class="jump-kicker">Бесконечная стройка</span><h2>Выше и выше</h2><p>Прыгайте по лесам и собирайте материалы. С каждым этажом путь становится сложнее.</p>${action('Начать подъём','start','','btn')}<small>Стрелки / A D · на телефоне — кнопки или касание экрана</small></div>`;
   if(state.phase==='paused')overlay.innerHTML=`<div class="jump-dialog"><span class="jump-kicker">Пауза</span><h2>Передышка на лесах</h2><p>Высота и собранные материалы сохранены.</p>${action('Продолжить','resume','','btn')}</div>`;
-  if(state.phase==='failed')overlay.innerHTML=`<div class="jump-dialog result"><span class="jump-portrait" aria-hidden="true"></span><span class="jump-kicker">Попытка завершена</span><h2>${ConstructionJump.floors(state)} этажей!</h2><p class="jump-result-score">${ConstructionJump.score(state)} очков</p><p>${state.notice}</p><p>${state.collected} материалов · грузов: ${state.destroyed}</p><p>Рекорд: ${best} очков</p>${action('Подняться ещё выше','restart','','btn')}</div>`;
+  if(state.phase==='failed')overlay.innerHTML=`<div class="jump-dialog result"><span class="jump-kicker">Попытка завершена</span><h2>${ConstructionJump.floors(state)} этажей!</h2><p class="jump-result-score">${ConstructionJump.score(state)} очков</p><p>${state.notice}</p><p>${state.collected} материалов · грузов: ${state.destroyed}</p><p>Рекорд: ${best} очков</p>${action('Подняться ещё выше','restart','','btn')}</div>`;
   if(state.phase==='ready' && typeof JumpArt!=='undefined' && !JumpArt.ready){
     const button=overlay.querySelector('[data-action="start"]');
-    if(button){button.disabled=true;button.textContent='Знакомимся с Инни…';}
+    if(button){button.disabled=true;button.textContent='Загружаем стройку…';}
   }
 }
 function updateHud(force=false){

@@ -86,11 +86,11 @@ const ConstructionJump=(()=>{
 
   function create(random=Math.random){
     const first={id:0,route:0,x:width/2,anchor:width/2,y:base,w:platformWidth,type:'base',broken:false};
-    const state={phase:'ready',time:0,random,player:{x:width/2,y:base,vy:0},camera:0,maxHeight:base,
+    const state={phase:'ready',time:0,random,player:{x:width/2,y:base,vy:0,facing:1},camera:0,maxHeight:base,
       platforms:[first],materials:[],powerups:[],obstacles:[],shots:[],effects:[],destroyed:0,shootAt:0,
       boost:null,boostsUsed:0,collected:0,bounces:0,lastRoute:0,nextRoute:0,nextId:0,
       nextY:base,nextX:width/2,routePlan:null,nextObstacle:12+Math.floor(random()*7),lastLandingY:base,tier:0,
-      notice:'Поднимайтесь по лесам. Касание платформы автоматически подбрасывает Инни.'};
+      notice:'Поднимайтесь по лесам. Касание платформы автоматически подбрасывает строителя.'};
     fillAhead(state);return state;
   }
 
@@ -118,6 +118,7 @@ const ConstructionJump=(()=>{
   function tick(state,dt,direction){
     state.time+=dt;
     const p=state.player,previousY=p.y;
+    if(direction)p.facing=Math.sign(direction);
     p.x+=(clamp(direction,-1,1)*moveSpeed+wind(state)*(state.boost ? .25 : 1))*dt;
     if(p.x<-playerRadius)p.x=width+playerRadius;
     if(p.x>width+playerRadius)p.x=-playerRadius;
@@ -177,7 +178,7 @@ const ConstructionJump=(()=>{
     const nextTier=tier(state.maxHeight);
     if(nextTier>state.tier){state.tier=nextTier;state.notice=`Новый этап: ${tiers[nextTier].name.toLowerCase()}. Лесов меньше, движение быстрее.`;}
     fillAhead(state);pruneBehind(state);
-    if(p.y<state.camera-65){state.phase='failed';state.notice='Инни сорвался. Попробуйте ещё раз.';}
+    if(p.y<state.camera-65){state.phase='failed';state.notice='Строитель сорвался. Попробуйте ещё раз.';}
   }
 
   function advance(state,seconds,direction=0){

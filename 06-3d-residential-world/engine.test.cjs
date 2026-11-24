@@ -25,15 +25,15 @@ test('Loaded boxes do not change the incoming flight time and follow plane switc
   const s=running();s.cargo=cargo(4);
   s.falling.push({id:1,type:'material',lane:s.lane,shape:'corner',x:s.player,progress:.7});
   A.advance(s,.4);assert.equal(s.cargo.length,4);
-  A.advance(s,.2);assert.equal(s.cargo.length,5);assert.equal(s.caught,1);
+  A.advance(s,.2);assert.equal(s.cargo.length,5);assert.equal(s.caught,3);assert.equal(A.cargoCount(s),7);
   const before=JSON.stringify(s.cargo);A.switchLane(s,'blue');assert.equal(JSON.stringify(s.cargo),before);
 });
 test('Three forms contribute 100 / 150 / 200 units; multiplier depends on box count',()=>{
   const s=running();s.cargo=[{shape:'single',lane:'blue'},{shape:'wide',lane:'brown'},{shape:'corner',lane:'brown'}];
-  assert.equal(s.cargo.length,3);assert.equal(A.multiplier(s),1);
-  const batch=A.submit(s);assert.equal(batch.raw,450);assert.equal(batch.amount,450);assert.equal(s.materials,450);
+  assert.equal(A.cargoCount(s),6);assert.equal(A.multiplier(s),2);
+  const batch=A.submit(s);assert.equal(batch.raw,450);assert.equal(batch.amount,900);assert.equal(batch.count,6);assert.equal(s.submitted,6);assert.equal(s.materials,900);
   assert.equal(s.cargo.length,0);assert.equal(s.lit,0);
-  s.cargo=cargo(4);A.submit(s);assert.equal(s.materials,1250);assert.equal(s.lit,1);
+  s.cargo=cargo(4);A.submit(s);assert.equal(s.materials,1700);assert.equal(s.lit,1);
 });
 test('Submitting a high stack is instantaneous, empties all cargo and cannot be awarded twice',()=>{
   const s=running();s.player=.27;s.lane='blue';s.cargo=cargo(7);
@@ -42,16 +42,44 @@ test('Submitting a high stack is instantaneous, empties all cargo and cannot be 
   assert.equal(s.lit,2);assert.equal(s.litAt.length,2);assert.equal(s.elapsed,at);assert.equal(s.cargo.length,0);
   assert.equal(A.submit(s),null);assert.equal(s.materials,2100);
 });
-test('The pickup holds eight boxes of any shape, then must submit before catching more',()=>{
-  const s=running();s.cargo=cargo(7,'corner');drop(s,{shape:'corner'});assert.equal(s.cargo.length,8);
-  const caught=s.caught;drop(s,{shape:'single'});assert.equal(s.cargo.length,8);assert.equal(s.caught,caught);
-  A.submit(s);assert.equal(s.cargo.length,0);drop(s,{shape:'wide'});assert.equal(s.cargo.length,1);
+test('Bundles fill one, two or three cells and cannot overflow the twelve-cell bed',()=>{
+  const s=running();drop(s,{shape:'corner'});assert.equal(A.cargoCount(s),3);
+  drop(s,{shape:'wide'});assert.equal(A.cargoCount(s),5);assert.equal(A.multiplier(s),2);
+  drop(s,{shape:'corner'});assert.equal(A.cargoCount(s),8);assert.equal(A.multiplier(s),3);
+  drop(s,{shape:'corner'});assert.equal(A.cargoCount(s),11);
+  drop(s,{shape:'single'});assert.equal(A.cargoCount(s),12);
+  assert.equal(s.caught,12);const before=JSON.stringify(s.cargo);
+  drop(s,{shape:'single'});assert.equal(JSON.stringify(s.cargo),before);assert.equal(s.caught,12);
+  A.submit(s);assert.equal(A.cargoCount(s),0);drop(s,{shape:'wide'});assert.equal(A.cargoCount(s),2);
+});
+test('At 10/12, two cells detach from a triple bundle and the remaining cell falls',()=>{
+  const s=running();s.cargo=cargo(10);drop(s,{shape:'corner'});
+  assert.equal(A.cargoCount(s),12);assert.equal(s.caught,2);assert.equal(A.multiplier(s),3);
+  assert.equal(s.loading.length,2);assert.deepEqual(s.loading.map(p=>p.slot),[10,11]);
+  assert.equal(s.falling.length,1);assert.deepEqual(s.falling[0].cells,[[0,0]]);
+  A.advance(s,.4);assert.equal(s.loading.length,0);assert.equal(A.cargoCount(s),12);
+  A.advance(s,1);assert.equal(s.missed,1);assert.equal(s.falling.length,0);
+  const batch=A.submit(s);assert.equal(batch.count,12);assert.equal(batch.raw,1133);assert.equal(batch.amount,3399);
+});
+test('One free cell accepts one box from either two- or three-box bundles',()=>{
+  for(const shape of ['wide','corner']){
+    const s=running();s.cargo=cargo(11);drop(s,{shape});
+    assert.equal(A.cargoCount(s),12);assert.equal(s.caught,1);
+    assert.equal(s.falling[0].cells.length,A.shapes[shape].cells.length-1);
+    assert.equal(s.loading.length,1);
+    const caught=s.caught;A.submit(s);assert.equal(s.loading.length,0);
+    A.advance(s,1);assert.equal(s.caught,caught,'remaining cells cannot be caught twice');assert.equal(A.cargoCount(s),0);
+  }
+});
+test('A hazard cancels partial-loading animation together with the cargo',()=>{
+  const s=running();s.cargo=cargo(10);drop(s,{shape:'corner'});drop(s,{type:'hazard'});
+  assert.equal(A.cargoCount(s),0);assert.equal(s.loading.length,0);
 });
 
 test('Both colours and all forms have the same airtime at every difficulty and round time',()=>{
   const flight=(A.dropHeight-A.bedHeight)/A.fallSpeed;
   for(const level of ['easy','normal','hard'])for(const elapsed of [0,55])for(const lane of ['blue','brown'])for(const shape of Object.keys(A.shapes)){
-    const s=running(level);s.elapsed=elapsed;s.lane=lane;s.cargo=cargo(3,'corner');
+    const s=running(level);s.elapsed=elapsed;s.lane=lane;s.cargo=cargo(3);
     s.falling.push({id:1,type:'material',lane,shape,x:s.player,progress:0});
     A.advance(s,flight-.001);assert.equal(s.cargo.length,3,`${level}/${lane}/${shape} caught early`);
     A.advance(s,.002);assert.equal(s.cargo.length,4,`${level}/${lane}/${shape} arrived late`);
@@ -101,11 +129,11 @@ test('Finished or paused rounds cannot submit or switch lanes; leftovers never a
 for(const level of ['easy','normal','hard'])test(`A full simulated two-plane round can build apartments: ${level}`,()=>{
   const s=A.create(level,rng());A.start(s);
   while(s.phase==='running'){
-    if(s.cargo.length>=7||(s.elapsed>89&&s.cargo.length))A.submit(s);
+    if(A.cargoCount(s)>=7||(s.elapsed>89&&s.cargo.length))A.submit(s);
     const material=s.falling.find(box=>box.type==='material'&&box.progress<1);
     const danger=s.falling.find(box=>box.type==='hazard'&&box.lane===s.lane&&Math.abs(box.x-s.player)<.1&&box.progress<1&&1-box.progress<.2);
     if(danger)A.switchLane(s,s.lane==='blue'?'brown':'blue');else if(material)A.switchLane(s,material.lane);
-    A.advance(s,1/60,{target:material?.x});assert.ok(s.cargo.length<=8);
+    A.advance(s,1/60,{target:material?.x});assert.ok(A.cargoCount(s)<=A.capacity);
   }
   assert.equal(s.elapsed,90);assert.ok(s.lit>=2,`only ${s.lit} windows`);assert.equal(s.lit,Math.min(48,Math.floor(s.materials/1000)));
 });
