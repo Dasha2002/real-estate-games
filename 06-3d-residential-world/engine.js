@@ -11,13 +11,13 @@ const MoveInArcade=(()=>{
     corner:{title:'Уголок',value:200,height:2,width:2,cells:[[0,0],[0,1],[1,1]]}
   };
   const levels={
-    easy:{title:'Спокойно',interval:1.18,hazard:0,description:'Редкие грузы. Только стройматериалы, без опасностей.'},
+    easy:{title:'Лёгкий',interval:1.18,hazard:0,description:'Для знакомства с игрой: редкие грузы, без опасных баллонов.'},
     normal:{title:'В темпе',interval:.88,hazard:.14,description:'Грузы чаще. После 12 секунд появляются опасные баллоны.'},
     hard:{title:'Час пик',interval:.65,hazard:.22,description:'Плотный поток и больше опасностей. Скорость падения прежняя.'}
   };
   function create(level='normal',random=Math.random){
     if(!levels[level])level='normal';
-    return {level,random,phase:'ready',elapsed:0,player:.5,lane:'brown',moving:0,cargo:[],falling:[],loading:[],materials:0,submitted:0,lit:0,litAt:[],missed:0,caught:0,crashes:0,dodged:0,spawnIn:.8,sequence:0,deck:[],hazardIntroduced:false,stunnedUntil:0,invulnerableUntil:0,notice:{id:0,text:'↑ — синий план, ↓ — коричневый. Пробел — сдать всю стопку.',at:0},lastBatch:null,effect:null,impact:null};
+    return {level,random,phase:'ready',elapsed:0,player:.5,lane:'brown',moving:0,cargo:[],falling:[],loading:[],deliveries:[],materials:0,submitted:0,lit:0,litAt:[],missed:0,caught:0,crashes:0,dodged:0,spawnIn:.8,sequence:0,deck:[],hazardIntroduced:false,stunnedUntil:0,invulnerableUntil:0,notice:{id:0,text:'↑ — синий план, ↓ — коричневый. Пробел — сдать всю стопку.',at:0},lastBatch:null,effect:null,impact:null};
   }
   function notify(s,text){s.notice={id:s.notice.id+1,text,at:s.elapsed};}
   function cargoCount(s){return s.cargo.reduce((sum,item)=>sum+(item.count??shapes[item.shape].cells.length),0);}
@@ -33,6 +33,8 @@ const MoveInArcade=(()=>{
     if(s.phase!=='running'||!s.cargo.length||s.elapsed<s.stunnedUntil)return null;
     const raw=Math.round(s.cargo.reduce((sum,item)=>sum+(item.value??shapes[item.shape].value),0)),factor=multiplier(s),count=cargoCount(s);
     const amount=raw*factor,before=s.lit;
+    s.deliveries.push({at:s.elapsed,x:(s.player-.5)*fieldWidth,lane:s.lane,
+      boxes:s.cargo.flatMap(item=>Array.from({length:item.count??shapes[item.shape].cells.length},()=>({lane:item.lane,shape:'single'})))});
     s.materials+=amount;s.submitted+=count;s.cargo=[];s.loading=[];
     const lit=Math.min(windowCount,Math.floor(s.materials/windowCost));
     while(s.lit<lit){s.litAt.push(s.elapsed);s.lit++;}
@@ -56,6 +58,7 @@ const MoveInArcade=(()=>{
     const settings=levels[s.level],before=s.player;
     s.elapsed+=dt;
     s.loading=s.loading.filter(part=>s.elapsed-part.at<.32);
+    s.deliveries=s.deliveries.filter(batch=>s.elapsed-batch.at<1.6);
     if(s.elapsed>=s.stunnedUntil){
       if(input.direction)s.player+=Math.sign(input.direction)*1.02*dt;
       else if(Number.isFinite(input.target)){

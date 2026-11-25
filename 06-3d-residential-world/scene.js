@@ -2,7 +2,7 @@
 
 const MoveInScene=(()=>{
   function createView(width,height){
-    const mobile=width<600,focal=width*1.1,centerY=height*(mobile?.5:.53);
+    const mobile=width<600,focal=Math.min(width*1.1,height*(width/height>1.6?1.72:1.5)),centerY=height*(mobile?.5:.53);
     const sy=Math.sin(.4),cy=Math.cos(.4),distance=14,targetY=2.2;
     function project(x,y,z){
       const depth=distance-(y-targetY)*sy-z*cy;
@@ -255,15 +255,19 @@ const MoveInScene=(()=>{
         }
       }
       function hazard(x,bottom,z,lane){
-        // Rounded pressure bottle: dark red body, broad warning band, visible valve.
-        const points=[[-.16,0],[-.24,.09],[-.24,.71],[-.16,.86],[.16,.86],[.24,.71],[.24,.09],[.16,0]].map(([xx,yy])=>[x+xx,bottom+yy,z+.22]);
-        const panel=face(points,{top:'#d26e4e',bottom:'#752f30'},'#663334');
-        if(panel)panel.radius=3*scale;
-        overlay(front(x-.24,bottom+.31,z+.23,.48,.25,'#f4ce68'),panel);
-        overlay(face([[x,bottom+.53,z+.24],[x+.11,bottom+.35,z+.24],[x-.11,bottom+.35,z+.24]],'#443d32'),panel);
-        overlay(front(x-.025,bottom+.39,z+.25,.05,.08,'#ffedba'),panel);
-        overlay(front(x-.21,bottom+.08,z+.24,.06,.6,'#e79570'),panel);
-        overlay(front(x-.21,bottom+.01,z+.24,.42,.07,lane==='blue'?'#4d91bf':'#bd874f'),panel);
+        // Revolved pressure bottle, with a warning band following its curved body.
+        const rings=[[0,.17],[.07,.24],[.31,.25],[.56,.25],[.71,.24],[.85,.14],[.88,.08]];
+        let nearest=Infinity;
+        for(let row=1;row<rings.length;row++)for(let side=0;side<20;side++){
+          const a=side*Math.PI/10,b=(side+1)*Math.PI/10,[ay,ar]=rings[row-1],[by,br]=rings[row];
+          const light=Math.round(36*Math.cos((a+b)/2+1.1));
+          const f=face([[x+Math.cos(a)*ar,bottom+ay,z+Math.sin(a)*ar],[x+Math.cos(b)*ar,bottom+ay,z+Math.sin(b)*ar],[x+Math.cos(b)*br,bottom+by,z+Math.sin(b)*br],[x+Math.cos(a)*br,bottom+by,z+Math.sin(a)*br]],shade(row===3?'#dfb950':'#a94736',light));
+          if(f)nearest=Math.min(nearest,f.depth);
+        }
+        const panel={depth:nearest};
+        overlay(face([[x,bottom+.53,z+.26],[x+.11,bottom+.35,z+.26],[x-.11,bottom+.35,z+.26]],'#443d32'),panel);
+        overlay(front(x-.025,bottom+.39,z+.265,.05,.08,'#ffedba'),panel);
+        overlay(front(x-.17,bottom+.06,z+.26,.34,.045,lane==='blue'?'#4d91bf':'#bd874f'),panel);
         cube(x-.07,bottom+.86,z-.07,.14,.13,.14,['#a8b9af','#4f6860','#6c857c']);
         cube(x-.15,bottom+.98,z-.05,.3,.05,.1,['#e5c078','#8c6435','#c2944e']);
       }
@@ -330,6 +334,17 @@ const MoveInScene=(()=>{
           parcel(loading.x+(targetX-loading.x)*ease,loading.y+(targetY-loading.y)*ease+Math.sin(t*Math.PI)*.35,fromZ+(z-.10-fromZ)*ease,boxes[i],.62+(.50-.62)*ease,.38);
         }else parcel(targetX,targetY,z-.10,boxes[i],.50,.38);
         cargoHeights[column]+=.52;
+      }
+      for(const batch of s.deliveries){
+        for(let slot=0;slot<batch.boxes.length;slot++){
+          const age=s.elapsed-batch.at-slot*.045,duration=reducedMotion?.25:.95;
+          if(age>duration)continue;
+          const t=Math.max(0,Math.min(1,age/duration)),ease=t*t*(3-2*t);
+          const fromX=batch.x-.1+(slot%3-1)*.52,fromY=MoveInArcade.bedHeight+Math.floor(slot/3)*.52;
+          const toX=-1.6+(slot%4)*.65,toY=.35+Math.floor(slot/4)*.35;
+          parcel(fromX+(toX-fromX)*ease,fromY+(toY-fromY)*ease+(reducedMotion?0:Math.sin(t*Math.PI)*3.2),
+            MoveInArcade.lanes[batch.lane].z-.1+(-5.5-MoveInArcade.lanes[batch.lane].z+.1)*ease,batch.boxes[slot],.50,.38);
+        }
       }
       faces.sort((a,b)=>b.depth-a.depth);
       for(const item of [...floorFaces,...faces]){
@@ -403,7 +418,7 @@ const MoveInScene=(()=>{
         text(blue?'I · ДАЛЬНИЙ':'II · БЛИЖНИЙ',point[0]+6*scale,point[1]+16*scale,mobile?19:14,blue?'#356e8a':'#8e6335','left');
       }
       const load=project(x,1.1+Math.max(...cargoHeights),z+.35);
-      if(boxes.length)text(`${boxes.length}/${MoveInArcade.capacity} · ×${MoveInArcade.multiplier(s)}`,load[0],load[1]-14*scale,mobile?24:20,'#2b5846');
+      if(boxes.length)text(`${boxes.length} · ×${MoveInArcade.multiplier(s)}`,load[0],load[1]-14*scale,mobile?24:20,'#2b5846');
       if(boxes.length===MoveInArcade.capacity)text('КУЗОВ ПОЛОН',load[0],load[1]-36*scale,mobile?22:16,'#ad7030');
       if(s.elapsed<s.stunnedUntil){const hit=project(x+1.3,2.55,z);text('!',hit[0],hit[1],32,'#ad4c37');}
       if(s.lastBatch&&s.elapsed-s.lastBatch.at<1.2)text('+'+s.lastBatch.amount+' материалов · ×'+s.lastBatch.factor,W*.5,H*.34-(s.elapsed-s.lastBatch.at)*12*scale,mobile?23:21,'#356b51');

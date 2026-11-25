@@ -42,6 +42,16 @@ test('Submitting a high stack is instantaneous, empties all cargo and cannot be 
   assert.equal(s.lit,2);assert.equal(s.litAt.length,2);assert.equal(s.elapsed,at);assert.equal(s.cargo.length,0);
   assert.equal(A.submit(s),null);assert.equal(s.materials,2100);
 });
+test('Delivery retains an independent animation snapshot, freezes on pause and expires without duplicate rewards',()=>{
+  const s=running();s.cargo=[{shape:'corner',lane:'blue',count:2,value:400/3},{shape:'wide',lane:'brown'}];
+  s.player=.3;s.lane='blue';const batch=A.submit(s),amount=s.materials;
+  assert.equal(s.deliveries.length,1);assert.equal(s.deliveries[0].boxes.length,4);
+  assert.equal(s.deliveries[0].lane,'blue');assert.equal(s.cargo.length,0);
+  s.cargo=cargo(1);s.player=.8;A.switchLane(s,'brown');
+  assert.equal(s.deliveries[0].boxes.length,4);assert.equal(s.deliveries[0].x,(.3-.5)*A.fieldWidth);
+  A.pause(s);A.advance(s,2);assert.equal(s.elapsed,batch.at);assert.equal(s.deliveries.length,1);
+  A.resume(s);A.advance(s,1.7);assert.equal(s.deliveries.length,0);assert.equal(s.materials,amount);
+});
 test('Bundles fill one, two or three cells and cannot overflow the twelve-cell bed',()=>{
   const s=running();drop(s,{shape:'corner'});assert.equal(A.cargoCount(s),3);
   drop(s,{shape:'wide'});assert.equal(A.cargoCount(s),5);assert.equal(A.multiplier(s),2);

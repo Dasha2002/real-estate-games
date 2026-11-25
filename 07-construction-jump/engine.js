@@ -10,7 +10,82 @@ const ConstructionJump=(()=>{
   const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
   const difficulty=altitude=>clamp((altitude-base)/7000,0,1);
   const tier=altitude=>tiers.reduce((current,item,index)=>altitude-base>=item.at?index:current,0);
+  const travel=platform=>platform.type==='moving'?platform.amplitude:0;
 
+  // Check actual jump arcs, rather than excluding cargo from every platform.
+  // The landing strip remains valid over the platform's full horizontal motion.
+  function landingPoints(p){
+    const edge=Math.max(0,Math.min(32,p.w/2+playerRadius*.7-travel(p)-8));
+    return [-edge,0,edge].map(offset=>({x:p.anchor+offset,y:p.y,speed:p.type==='spring'?springSpeed:jumpSpeed,platform:p.id}));
+  }
+  function clearJump(a,b,obstacles,canWrap){
+    const dy=b.y-a.y,discriminant=a.speed*a.speed-2*gravity*dy;
+    if(dy<=0||discriminant<0)return false;
+    const duration=(a.speed+Math.sqrt(discriminant))/gravity;
+    let dx=b.x-a.x;
+    const period=width+2*playerRadius;
+    if(canWrap&&Math.abs(dx)>period/2)dx-=Math.sign(dx)*period;
+    // Leave enough steering authority to counter the strongest wind.
+    if(Math.abs(dx)>duration*(moveSpeed-72))return false;
+    for(let i=0;i<=64;i++){
+      const t=duration*i/64,y=a.y+a.speed*t-gravity*t*t/2;
+      let x=a.x+dx*i/64;
+      if(canWrap)x=((x+playerRadius)%period+period)%period-playerRadius;
+      for(const o of obstacles)if(Math.abs(x-o.anchor)<55&&y<o.baseY+28&&y+58>o.baseY-28)return false;
+    }
+    return true;
+  }
+  function bypassPath(platforms,start,end,obstacles,canWrap){
+    const nodes=platforms.filter(p=>!p.broken&&p.y>=start.y&&p.y<=end.y).sort((a,b)=>a.y-b.y).flatMap(landingPoints);
+    const paths=new Map();
+    for(const node of nodes){
+      if(node.platform===start.id){paths.set(node,[node]);continue;}
+      for(const [from,path] of paths){
+        if(clearJump(from,node,obstacles,canWrap)){paths.set(node,[...path,node]);break;}
+      }
+      if(node.platform===end.id&&paths.has(node))return paths.get(node);
+    }
+    return null;
+  }
+  function resolveObstacles(state){
+    for(const item of state.obstacles){
+      if(!item.pending||state.nextY<item.baseY+200)continue;
+      const route=state.platforms.filter(p=>p.route!==null).sort((a,b)=>a.y-b.y);
+      let index=route.length-1;while(index>=0&&route[index].y>=item.baseY-23)index--;
+      const support=route[index],start=route[Math.max(0,index-2)],end=route[index+2];
+      if(!support||!start||!end){item.destroyed=true;continue;}
+      const canWrap=support.y>=base+50*floorHeight;
+      const others=state.obstacles.filter(o=>o!==item&&!o.pending&&!o.destroyed);
+      // Alternate which part of the nearby route is threatened. Never scan
+      // from the left edge: that biased every accepted load toward one side.
+      const sign=item.anchor<support.anchor?-1:1;
+      const candidates=[support.anchor+sign*24,support.anchor-sign*24,
+        support.anchor+sign*52,support.anchor-sign*52,route[index+1].anchor];
+      let accepted=false;
+      for(const candidate of candidates){
+        item.x=item.anchor=clamp(candidate,50,width-50);
+        const hazards=[...others,item];
+        let path=bypassPath(state.platforms,start,end,hazards,canWrap);
+        if(!path){
+          const xs=[60,110,160,200,240,290,340].sort((a,b)=>
+            Math.abs(b-item.anchor)-Math.abs(a-item.anchor));
+          for(const x of xs){
+            const detour={id:state.nextId+1,route:null,x,anchor:x,y:support.y,w:platformWidth,
+              type:support.hard?'moving':'normal',hard:support.hard,amplitude:14,
+              speed:support.speed,phase:support.phase,broken:false,detour:true};
+            const clear=state.platforms.every(p=>Math.abs(p.y-detour.y)>=48||
+              Math.abs(p.anchor-x)>=platformWidth+12+travel(p)+travel(detour));
+            if(!clear)continue;
+            path=bypassPath([...state.platforms,detour],start,end,hazards,canWrap);
+            if(path){state.nextId++;state.platforms.push(detour);break;}
+          }
+        }
+        if(path){item.safeRoute=path;item.supportId=support.id;item.pending=false;accepted=true;break;}
+      }
+      if(!accepted)item.destroyed=true;
+    }
+    state.obstacles=state.obstacles.filter(item=>!item.destroyed);
+  }
   function routeX(state,hard){
     const random=state.random,canWrap=state.nextY>=base+50*floorHeight;
     if(!state.routePlan || state.routePlan.left===0){
@@ -68,12 +143,12 @@ const ConstructionJump=(()=>{
     if(id>=state.nextObstacle){
       const x=clamp(state.nextX+(random()<.5?-1:1)*(80+random()*65),55,width-55);
       const y=state.nextY+48+random()*34;
-      state.obstacles.push({id,x,y,anchor:x,baseY:y,phase:random()*Math.PI*2,destroyed:false});
+      state.obstacles.push({id,x,y,anchor:x,baseY:y,phase:random()*Math.PI*2,destroyed:false,pending:true});
       state.nextObstacle=id+(hard?7:10)+Math.floor(random()*(hard?8:10));
     }
   }
 
-  function fillAhead(state){while(state.nextY<state.camera+height+260)addRoute(state);}
+  function fillAhead(state){while(state.nextY<state.camera+height+260)addRoute(state);resolveObstacles(state);}
   function pruneBehind(state){
     const below=state.camera-170;
     state.platforms=state.platforms.filter(item=>item.y>=below);
@@ -129,6 +204,7 @@ const ConstructionJump=(()=>{
       if(platform.type==='moving')platform.x=clamp(platform.anchor+Math.sin(state.time*platform.speed+platform.phase)*platform.amplitude,platform.hard?22:45,width-(platform.hard?22:45));
     }
     for(const item of state.obstacles){
+      if(item.pending)continue;
       const previousTop=item.y+19;
       item.x=item.anchor+Math.sin(state.time*3+item.phase)*9;
       item.y=item.baseY+Math.sin(state.time*2.4+item.phase)*4;

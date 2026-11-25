@@ -72,7 +72,7 @@ const ConstructionScene=(()=>{
   }
   function powerup(ctx,s,p){if(p.collected)return;const y=sy(s,p.y);if(y<-80||y>H+80)return;ellipse(ctx,p.x,y,23,23,'#b9f3d932');gear(ctx,p.kind,p.x,y+Math.sin(s.time*4+p.id)*3,1,s.time);}
   function obstacle(ctx,s,p){
-    if(p.destroyed)return;const y=sy(s,p.y);if(y<-85||y>H+50)return;
+    if(p.destroyed||p.pending)return;const y=sy(s,p.y);if(y<-85||y>H+50)return;
     ctx.save();ctx.translate(p.x,y);ctx.rotate(Math.sin(s.time*3+p.phase)*.07);
     line(ctx,0,-85,0,-36,C.wine);line(ctx,0,-36,-25,10,C.wine);line(ctx,0,-36,25,10,C.wine);
     if(sprite(ctx,'cargo',-28,-19,56,38)){ctx.restore();return;}

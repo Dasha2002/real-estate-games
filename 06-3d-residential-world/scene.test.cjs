@@ -8,7 +8,7 @@ const context=vm.createContext({MoveInArcade:A});
 vm.runInContext(fs.readFileSync(path.join(__dirname,'scene.js'),'utf8'),context);
 const Scene=vm.runInContext('MoveInScene',context);
 
-for(const [w,h] of [[1100,748],[375,363]])test(`Perspective and mouse targeting agree on both planes: ${w}px`,()=>{
+for(const [w,h] of [[1100,748],[375,363],[844,390]])test(`Perspective and mouse targeting agree on both planes: ${w}px`,()=>{
   const view=Scene.createView(w,h);
   const near=view.project(1,A.bedHeight,A.lanes.brown.z)[0]-view.project(0,A.bedHeight,A.lanes.brown.z)[0];
   const far=view.project(1,A.bedHeight,A.lanes.blue.z)[0]-view.project(0,A.bedHeight,A.lanes.blue.z)[0];

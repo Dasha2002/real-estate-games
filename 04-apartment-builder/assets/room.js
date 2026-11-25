@@ -35,6 +35,52 @@ const ApartmentRoom = (() => {
     return '#'+hex.slice(1).match(/../g).map(part=>Math.round(clamp(parseInt(part,16)*factor,0,255)).toString(16).padStart(2,'0')).join('');
   }
   const {plans,contains} = ApartmentPlans;
+  const wallMeshes=new WeakMap();
+  function wallGeometry(plan,overhead=false){
+    let cache=wallMeshes.get(plan);if(!cache){cache={};wallMeshes.set(plan,cache);}
+    if(cache[overhead])return cache[overhead];
+    const height=overhead?.13:1.35,rects=[...plan.perimeter,...plan.walls];
+    // Extend only connected ends. Union removes duplicate faces at L/T/X joints;
+    // free ends at doors and windows retain the original opening width.
+    const joined=rects.map(([x,z,w,d],index)=>{
+      const horizontal=w>d,r=horizontal?d/2:w/2;
+      const ends=horizontal?[[x-w/2,z],[x+w/2,z]]:[[x,z-d/2],[x,z+d/2]];
+      const extend=ends.map(([px,pz])=>rects.some(([ox,oz,ow,od],i)=>i!==index&&Math.abs(px-ox)<=ow/2+1e-7&&Math.abs(pz-oz)<=od/2+1e-7)?r:0);
+      return horizontal?[x+(extend[1]-extend[0])/2,z,w+extend[0]+extend[1],d]:[x,z+(extend[1]-extend[0])/2,w,d+extend[0]+extend[1]];
+    });
+    const volumes=joined.map(rect=>({rect,low:0,high:height}));
+    for(const o of plan.windows){
+      const mid=(o.from+o.to)/2,len=o.to-o.from;
+      volumes.push({rect:o.horizontal?[mid,o.at,len,.085]:[o.at,mid,.085,len],low:0,high:overhead?.11:.4});
+      if(!overhead)volumes.push({rect:o.horizontal?[mid,o.at,len,.2]:[o.at,mid,.2,len],low:1.15,high:height});
+    }
+    if(!overhead)for(const o of plan.doors){
+      const mid=(o.from+o.to)/2,len=o.to-o.from;
+      volumes.push({rect:o.horizontal?[mid,o.at,len,.16]:[o.at,mid,.16,len],low:1.05,high:height});
+    }
+    const unique=values=>[...new Set(values.map(v=>Math.round(v*1e6)/1e6))].sort((a,b)=>a-b);
+    const xs=unique(volumes.flatMap(v=>[v.rect[0]-v.rect[2]/2,v.rect[0]+v.rect[2]/2]));
+    const zs=unique(volumes.flatMap(v=>[v.rect[1]-v.rect[3]/2,v.rect[1]+v.rect[3]/2]));
+    const ys=unique([0,height-.0225,...volumes.flatMap(v=>[v.low,v.high])]);
+    const nx=xs.length-1,nz=zs.length-1,ny=ys.length-1;
+    const occupied=new Set(),key=(i,j,k)=>(k*nz+j)*nx+i;
+    for(let k=0;k<ny;k++)for(let j=0;j<nz;j++)for(let i=0;i<nx;i++){
+      const x=(xs[i]+xs[i+1])/2,z=(zs[j]+zs[j+1])/2,y=(ys[k]+ys[k+1])/2;
+      if(volumes.some(v=>y>v.low&&y<v.high&&Math.abs(x-v.rect[0])<v.rect[2]/2&&Math.abs(z-v.rect[1])<v.rect[3]/2))occupied.add(key(i,j,k));
+    }
+    const has=(i,j,k)=>i>=0&&i<nx&&j>=0&&j<nz&&k>=0&&k<ny&&occupied.has(key(i,j,k));
+    const faces=[];
+    for(let k=0;k<ny;k++)for(let j=0;j<nz;j++)for(let i=0;i<nx;i++)if(has(i,j,k)){
+      const x=xs[i],xx=xs[i+1],z=zs[j],zz=zs[j+1],y=ys[k],yy=ys[k+1];
+      const add=(points,tone)=>faces.push({points,tone,cap:y>=height-.023});
+      if(!has(i,j,k+1))add([[x,yy,z],[xx,yy,z],[xx,yy,zz],[x,yy,zz]],0);
+      if(!has(i-1,j,k))add([[x,y,zz],[x,y,z],[x,yy,z],[x,yy,zz]],2);
+      if(!has(i+1,j,k))add([[xx,y,z],[xx,y,zz],[xx,yy,zz],[xx,yy,z]],2);
+      if(!has(i,j-1,k))add([[x,y,z],[xx,y,z],[xx,yy,z],[x,yy,z]],1);
+      if(!has(i,j+1,k))add([[xx,y,zz],[x,y,zz],[x,yy,zz],[xx,yy,zz]],1);
+    }
+    return cache[overhead]={faces,height,volumes};
+  }
 
   function floorPlan(state) {
     return plans.find(plan=>plan.id===state.plan) || plans[1];
@@ -319,39 +365,32 @@ const ApartmentRoom = (() => {
       for(const {horizontal,at,from,to} of plan.doors){
         const center=(from+to)/2;
         floor(horizontal?center:at,horizontal?at:center,horizontal?to-from:.18,horizontal?.18:to-from,'#ad886c','#714d3662');
-        for(const coordinate of [from+.03,to-.03])box(horizontal?coordinate:at,horizontal?at:coordinate,horizontal?.06:.20,horizontal?.20:.06,overhead?.10:2.1,bronze);
-        if(!overhead)box(horizontal?center:at,horizontal?at:center,horizontal?to-from:.16,horizontal?.16:to-from,.6,wall,{y:2.1,material:'paint'});
+        for(const coordinate of [from+.03,to-.03])box(horizontal?coordinate:at,horizontal?at:coordinate,horizontal?.06:.20,horizontal?.20:.06,overhead?.10:1.05,bronze);
         if(overhead){
           const hinge=horizontal?[from,at]:[at,from];
           const end=horizontal?[from,at-(to-from)]:[at+(to-from),from];
           line([[hinge[0],.03,hinge[1]],[end[0],.03,end[1]]],'#8c6b50');
         }
       }
-      for(const [x,z,w,d] of plan.perimeter){
-        const height=overhead?.13:2.7;
-        box(x,z,w,d,height-(overhead?0:.045),wall,{material:'paint'});
-        box(x,z,w+.028,d+.028,.045,trim,{y:height-.045});
+      for(const surface of wallGeometry(plan,overhead).faces){
+        const [a,b]=surface.points;
+        if(surface.tone!==0&&(b[0]-a[0])*ax-(b[2]-a[2])*az>=0)continue;
+        const tint=(surface.cap?trim:wall)[surface.tone];
+        // Same-colour coverage closes subpixel antialias seams between mesh cells.
+        face(surface.points,tint,tint,null,faces);
       }
       for(const opening of plan.windows){
         const {horizontal,at,from,to}=opening;
         const center=(from+to)/2,width=to-from;
-        const sill=overhead?.11:.8,height=overhead?.06:1.35;
+        const sill=overhead?.11:.4,height=overhead?.06:.675;
         const pane=['#cee6e4','#b0d5d3a9','#8cb8bbad'];
         const px=horizontal?center:at,pz=horizontal?at:center;
-        box(px,pz,horizontal?width:.085,horizontal?.085:width,sill,wall);
-        box(px,pz,horizontal?width+.05:.18,horizontal?.18:width+.05,.055,trim,{y:sill});
-        box(px,pz,horizontal?width:.06,horizontal?.06:width,height,pane,{y:sill+.055});
+        box(px,pz,horizontal?width+.05:.18,horizontal?.18:width+.05,.0275,trim,{y:sill});
+        box(px,pz,horizontal?width:.06,horizontal?.06:width,height,pane,{y:sill+.0275});
         for(const coordinate of [from,center,to]){
-          box(horizontal?coordinate:at,horizontal?at:coordinate,.055,.055,height+.06,bronze,{y:sill+.04});
+          box(horizontal?coordinate:at,horizontal?at:coordinate,.055,.055,height+.03,bronze,{y:sill+.02});
         }
-        box(px,pz,horizontal?width+.05:.09,horizontal?.09:width+.05,.055,bronze,{y:sill+height+.04});
-        if(!overhead)box(px,pz,horizontal?width:.2,horizontal?.2:width,.4,wall,{y:2.3,material:'paint'});
-      }
-      for(const [x,z,w,d] of plan.walls){
-        const height=overhead?.13:2.7;
-        box(x,z,w,d,height-(overhead?0:.045),wall,{material:'paint'});
-        box(x,z,w+.025,d+.025,.05,trim);
-        box(x,z,w+.025,d+.025,.045,trim,{y:height-.045});
+        box(px,pz,horizontal?width+.05:.09,horizontal?.09:width+.05,.0275,bronze,{y:sill+height+.02});
       }
       for(const item of plan.fixtures){
         const [x,z,w,d]=item.bounds;
@@ -562,5 +601,5 @@ const ApartmentRoom = (() => {
       destroy(){alive=false;observer.disconnect();}
     };
   }
-  return {mount,pieces,colors,fits,suggest,floorPlan,footprint};
+  return {mount,pieces,colors,fits,suggest,floorPlan,footprint,wallGeometry};
 })();
