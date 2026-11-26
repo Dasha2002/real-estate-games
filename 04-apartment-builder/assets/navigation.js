@@ -10,9 +10,10 @@ const ApartmentNavigation=(()=>{
     }
     // Some glazed openings are also balcony doors in the source geometry.
     const windows=plan.windows.filter(w=>!plan.doors.some(d=>d.horizontal===w.horizontal&&Math.abs(d.at-w.at)<.01&&d.from<=w.from+.01&&d.to>=w.to-.01))
-      .map(w=>w.horizontal?[(w.from+w.to)/2,w.at,w.to-w.from,.16]:[w.at,(w.from+w.to)/2,.16,w.to-w.from]);
-    const occupied=[...plan.walls,...plan.perimeter,...windows,...plan.fixtures.map(f=>f.bounds),
-      ...Object.entries(state.placed).map(([key,p])=>[...p,...ApartmentRoom.footprint(key,state.rotations[key]||0)])];
+      .map(w=>{const t=ApartmentRoom.windowThickness(plan,w);return w.horizontal?[(w.from+w.to)/2,w.at,w.to-w.from,t]:[w.at,(w.from+w.to)/2,t,w.to-w.from];});
+    const e=plan.entry,mid=(e.from+e.to)/2,entrance=e.horizontal?[mid,e.at,e.to-e.from,.075]:[e.at,mid,.075,e.to-e.from];
+    const occupied=[...plan.walls,...plan.perimeter,entrance,...windows,...plan.fixtures.map(f=>f.bounds),...ApartmentRoom.radiators(plan).map(r=>r.bounds),
+      ...Object.entries(state.placed).filter(([key])=>key!==state.carrying&&!['curtain','rug'].includes(ApartmentRoom.pieceFor(key).type)).map(([key,p])=>[...p,...ApartmentRoom.footprint(key,state.rotations[key]||0)])];
     return occupied.every(([cx,cz,w,d])=>{
       const dx=Math.max(Math.abs(x-cx)-w/2,0),dz=Math.max(Math.abs(z-cz)-d/2,0);
       return Math.hypot(dx,dz)>=radius;
@@ -50,5 +51,24 @@ const ApartmentNavigation=(()=>{
     if(distance>.00001){state.walker.facing=Math.atan2(dx,dz);state.walker.phase+=distance*8;return true;}
     return false;
   }
-  return {radius,canStand,spawn,move};
+  function canReach(key,state,distance=2.5){
+    let point=state.placed[key];const player=state.walker?.position;
+    if(!point||!player)return false;
+    let [w,d]=ApartmentRoom.footprint(key,state.rotations[key]||0);
+    if(ApartmentRoom.pieceFor(key).type==='curtain'){
+      const mount=ApartmentRoom.curtainMount(point,state);
+      if(mount){point=mount.point;[w,d]=mount.rotation%2?[.18,mount.width]:[mount.width,.18];}
+    }
+    return Math.hypot(Math.max(0,Math.abs(player[0]-point[0])-w/2),Math.max(0,Math.abs(player[1]-point[1])-d/2))<=distance;
+  }
+  function recover(state){
+    if(!state.walker||canStand(state.walker.position,state))return;
+    const [x,z]=state.walker.position;
+    for(let distance=.1;distance<=3;distance+=.1)for(let i=0;i<32;i++){
+      const angle=i*Math.PI/16,p=[x+Math.cos(angle)*distance,z+Math.sin(angle)*distance];
+      if(canStand(p,state)){state.walker.position=p;return;}
+    }
+    spawn(state);
+  }
+  return {radius,canStand,spawn,move,canReach,recover};
 })();

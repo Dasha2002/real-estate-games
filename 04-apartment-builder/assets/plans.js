@@ -19,7 +19,6 @@ const ApartmentPlans = (() => {
         [1.6,0,1.6,3.5,[.35,2.55]],
         [0,3.5,4.6,3.5],
         [4.6,3.5,4.6,6.9,[3.67,4.65]],
-        [1.6,3.5,5.6,3.5,[4.15,5.6]],
         [5.6,0,5.6,2.8],
         [5.6,2.8,8,2.8,[6.05,7.25]]
       ],
@@ -27,7 +26,7 @@ const ApartmentPlans = (() => {
       entry:['right',8,3.25,4.45],
       fixtures:[
         ['kitchen',[3.63,.48,3.8,.7]],['shower',[6.73,.6,1.72,.85]],
-        ['vanity',[7.45,1.48,.62,.43]],['toilet',[7.29,2.19,.56,.62]]
+        ['vanity',[7.45,1.48,.62,.43],'right'],['toilet',[7.29,2.19,.56,.62],'right']
       ]
     },
     {
@@ -58,10 +57,9 @@ const ApartmentPlans = (() => {
       ],
       entry:['right',4.5,.95,1.95],
       fixtures:[
-        ['shower',[.94,4.03,1.48,.78]],['vanity',[1.35,2.61,.72,.42]],
-        ['toilet',[.65,3.09,.54,.65]],
-        ['vanity',[.65,.43,.64,.44]],['toilet',[.65,1.45,.55,.63]],
-        ['storage',[3.2,.4,2.2,.52]]
+        ['shower',[.94,4.03,1.48,.78]],['vanity',[1.35,2.61,.72,.42],'top'],
+        ['toilet',[.65,3.09,.54,.65],'left'],
+        ['vanity',[.65,.43,.64,.44],'top'],['toilet',[.65,1.45,.55,.63],'left']
       ]
     },
     {
@@ -95,9 +93,9 @@ const ApartmentPlans = (() => {
       entry:['bottom',8,9.12,10.4],
       fixtures:[
         ['kitchen',[11.04,3.68,.72,4.22]],
-        ['shower',[8.3,8.16,.91,1.77]],['vanity',[7.2,8.91,.66,.43]],
-        ['toilet',[7.17,7.85,.61,.76]],['vanity',[5.87,6.3,.58,.44]],
-        ['toilet',[5.91,7.35,.54,.67]],['storage',[11.03,7.05,.64,1.63]]
+        ['shower',[8.3,8.16,.91,1.77]],['vanity',[7.2,8.91,.66,.43],'bottom'],
+        ['toilet',[7.17,7.85,.61,.76],'left'],['vanity',[5.87,6.3,.58,.44],'right'],
+        ['toilet',[5.91,7.35,.54,.67],'right']
       ]
     }
   ];
@@ -152,11 +150,25 @@ const ApartmentPlans = (() => {
       const [x1,z1]=point(bounds.slice(0,2)),[x2,z2]=point(bounds.slice(2));
       return {id,name,bounds:[x1,z1,x2,z2],label:[(x1+x2)/2,(z1+z2)/2],area:(x2-x1)*(z2-z1)};
     });
+    const fixtures=source.fixtures.map(([type,bounds,back])=>{
+      const fixture={type,bounds:rect(bounds)};
+      if(!back)return fixture;
+      const original=point(bounds.slice(0,2)),zone=zones.find(z=>z.id.startsWith('bath')&&original[0]>=z.bounds[0]&&original[0]<=z.bounds[2]&&original[1]>=z.bounds[1]&&original[1]<=z.bounds[3]);
+      const rotation={top:0,right:1,bottom:2,left:3}[back],horizontal=back==='top'||back==='bottom',axis=horizontal?1:0;
+      const at=zone.bounds[{left:0,top:1,right:2,bottom:3}[back]],inward=back==='top'||back==='left'?1:-1;
+      const modelSize=bounds.slice(2).map(v=>v*scale),p=[...original];
+      const backing=[...walls,...perimeter].filter(([x,z,w,d])=>(w>d)===horizontal&&Math.abs((horizontal?z:x)-at)<1e-6&&Math.abs(original[horizontal?0:1]-(horizontal?x:z))<=((horizontal?w:d)+modelSize[0])/2);
+      const thickness=backing.length?Math.max(...backing.map(r=>r[horizontal?3:2])):.2*scale;
+      p[axis]=at+inward*(thickness/2+modelSize[1]/2+.012);
+      fixture.bounds=[...p,...(rotation%2?[modelSize[1],modelSize[0]]:modelSize)];
+      fixture.modelSize=modelSize;fixture.rotation=rotation;fixture.backWall={axis,at,thickness,inward};
+      return fixture;
+    });
     return {
       id:source.id,title:source.title,area:source.area,source:source.source,
       outline:source.outline.map(point),width:(Math.max(...xs)-Math.min(...xs))*scale,depth:(Math.max(...zs)-Math.min(...zs))*scale,
       walls,doors,entry,windows,perimeter,zones,
-      fixtures:source.fixtures.map(([type,bounds])=>({type,bounds:rect(bounds)}))
+      fixtures
     };
   }
 

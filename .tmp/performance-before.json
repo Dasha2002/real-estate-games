@@ -1,0 +1,20 @@
+[
+  {
+    "sofas": 1,
+    "cpuMedianMs": 110.31,
+    "trianglesPerFrame": 22342,
+    "uploadMiBPerFrame": 4.35
+  },
+  {
+    "sofas": 8,
+    "cpuMedianMs": 288.83,
+    "trianglesPerFrame": 66890,
+    "uploadMiBPerFrame": 13.01
+  },
+  {
+    "sofas": 24,
+    "cpuMedianMs": 824.86,
+    "trianglesPerFrame": 168714,
+    "uploadMiBPerFrame": 32.82
+  }
+]

@@ -26,7 +26,7 @@ for(const shape of [
   assert.ok(inside(mesh.volumes,[0,.5,0]));
 });
 for(const plan of P.plans)test('Wall geometry and openings stay valid for '+plan.id,()=>{
-  const mesh=R.wallGeometry(plan);checkMesh(mesh);checkMesh(R.wallGeometry(plan,true));
+  const mesh=R.wallGeometry(plan);checkMesh(mesh);checkMesh(R.wallGeometry(plan,true));checkMesh(R.wallGeometry(plan,false,true));
   assert.equal(mesh,R.wallGeometry(plan),'geometry is cached across camera changes');
   for(const d of plan.doors){
     const mid=(d.from+d.to)/2;
@@ -34,6 +34,37 @@ for(const plan of P.plans)test('Wall geometry and openings stay valid for '+plan
   }
   for(const w of plan.windows){
     const mid=(w.from+w.to)/2;
-    assert.equal(inside(mesh.volumes,[w.horizontal?mid:w.at,.7,w.horizontal?w.at:mid]),false,'glass opening remains open');
+    assert.equal(inside(mesh.volumes,[w.horizontal?mid:w.at,1.2,w.horizontal?w.at:mid]),false,'glass opening remains open');
+  }
+});
+
+test('Plan slices real-height openings; full interior restores lintels at 2.1 and 2.3 metres',()=>{
+  const plan={perimeter:[[0,0,2,.2],[4,0,2,.2],[8,0,2,.2]],walls:[],
+    doors:[{horizontal:true,at:0,from:1,to:3}],windows:[{horizontal:true,at:0,from:5,to:7}]};
+  const cut=R.wallGeometry(plan),full=R.wallGeometry(plan,false,true);
+  assert.equal(cut.height,1.35);assert.equal(full.height,2.7);
+  checkMesh(cut);checkMesh(full);
+  for(const y of [.9,1.1,1.349]){
+    assert.equal(inside(cut.volumes,[2,y,0]),false,'cut door has no lintel');
+    assert.equal(inside(cut.volumes,[6,y,0]),false,'cut window stays open to the cut plane');
+  }
+  assert.equal(inside(cut.volumes,[6,.79,0]),true,'sill keeps its real height');
+  assert.equal(inside(full.volumes,[2,2.09,0]),false);
+  assert.equal(inside(full.volumes,[2,2.11,0]),true);
+  assert.equal(inside(full.volumes,[6,2.29,0]),false);
+  assert.equal(inside(full.volumes,[6,2.31,0]),true);
+  assert.equal(full,R.wallGeometry(plan,false,true),'full height mesh is cached separately');
+});
+
+test('Every apartment has an entrance leaf, interior handle and peephole at the original doorway',()=>{
+  for(const plan of P.plans){
+    for(const walking of [false,true]){
+      const parts=R.entranceGeometry(plan,false,walking),leaf=parts[0],e=plan.entry;
+      assert.equal(leaf.height,walking?2.06:1.35);
+      assert.ok(Math.abs(leaf.rect[e.horizontal?0:1]-(e.from+e.to)/2)<1e-8);
+      assert.ok(parts.some(p=>p.y===1.02),'handle remains visible in both views');
+      assert.ok(parts.every(p=>p.y+p.height<=(walking?2.1:1.35)));
+    }
+    assert.ok(R.entranceGeometry(plan,false,true).some(p=>p.y===1.53),'full-height door has a peephole');
   }
 });

@@ -79,12 +79,12 @@ const Game = (() => {
     }
 
     root.addEventListener('click', handle);
-    modeRoot.addEventListener('click', handle);
+    modeRoot?.addEventListener('click', handle);
     dialog.addEventListener('click', event => {
       if (event.target === dialog || event.target.closest('[data-close]')) close();
       else handle(event);
     });
-    document.querySelector('#restart').addEventListener('click', () => {
+    document.querySelector('#restart')?.addEventListener('click', () => {
       close();
       restart(mode);
       root.focus({preventScroll:true});
